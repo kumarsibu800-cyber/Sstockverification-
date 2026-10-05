@@ -1,0 +1,2569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Library Stock Verification</title>
+<meta name="description" content="Physical stock verification and reconciliation for school libraries. Works offline.">
+<meta name="theme-color" content="#1C5A45">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Stock Verify">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" crossorigin="anonymous">
+<style>
+:root{
+  --paper:#F2F4F1; --surface:#FFFFFF; --surface-2:#F7F8F6; --ink:#16212B; --ink-2:#4A5764; --ink-3:#76828C;
+  --rule:#D7DCD5; --rule-2:#BFC7BE;
+  --green:#1C5A45; --on-green:#FFFFFF; --green-wash:#DFEDE5;
+  --red:#A1271D; --red-wash:#F7E1DD; --amber:#835600; --amber-wash:#F5E8CC;
+  --blue:#29508F; --blue-wash:#E0E8F5; --violet:#583D88; --violet-wash:#EAE4F4;
+  --grey:#545F69; --grey-wash:#E7EAE6; --focus:#2C6FD6;
+  --serif:"Source Serif 4","Iowan Old Style",Georgia,"Times New Roman",serif;
+  --sans:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#11171C; --surface:#182027; --surface-2:#1D262E; --ink:#E6EBE7; --ink-2:#A6B2BA; --ink-3:#7F8C95;
+    --rule:#2A353E; --rule-2:#3A4752;
+    --green:#74C6A6; --on-green:#0D2219; --green-wash:#1B372D;
+    --red:#F0897E; --red-wash:#3D201C; --amber:#E2B45C; --amber-wash:#382C14;
+    --blue:#93B4EE; --blue-wash:#1C2A40; --violet:#BBA3E8; --violet-wash:#2B2440;
+    --grey:#AEB8BF; --grey-wash:#232D35; --focus:#8DB5FF; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#11171C; --surface:#182027; --surface-2:#1D262E; --ink:#E6EBE7; --ink-2:#A6B2BA; --ink-3:#7F8C95;
+  --rule:#2A353E; --rule-2:#3A4752;
+  --green:#74C6A6; --on-green:#0D2219; --green-wash:#1B372D;
+  --red:#F0897E; --red-wash:#3D201C; --amber:#E2B45C; --amber-wash:#382C14;
+  --blue:#93B4EE; --blue-wash:#1C2A40; --violet:#BBA3E8; --violet-wash:#2B2440;
+  --grey:#AEB8BF; --grey-wash:#232D35; --focus:#8DB5FF; color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+img{max-width:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;margin:0}
+h1{font-size:1.75rem;line-height:1.2}
+h2{font-size:1.3rem;line-height:1.25}
+h3{font-size:1.05rem;line-height:1.3}
+p{margin:.35rem 0}
+.muted{color:var(--ink-2)}
+.small{font-size:.86rem}
+.num,.acc{font-variant-numeric:tabular-nums lining-nums}
+.acc{font-family:var(--serif);font-weight:700}
+
+/* layout */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow:auto;border-right:1px solid var(--rule);background:var(--surface);padding:18px 12px 24px;display:flex;flex-direction:column;gap:2px}
+.brand{padding:4px 10px 16px;border-bottom:1px solid var(--rule);margin-bottom:10px}
+.brand b{display:block;font-family:var(--serif);font-size:1.15rem;line-height:1.2}
+.brand span{font-size:.82rem;color:var(--ink-3)}
+.nav-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;background:none;text-align:left;padding:8px 10px;border-radius:6px;cursor:pointer;color:var(--ink-2)}
+.nav-btn:hover{background:var(--surface-2);color:var(--ink)}
+.nav-btn[aria-current="page"]{background:var(--green-wash);color:var(--ink);font-weight:500;box-shadow:inset 3px 0 0 var(--green)}
+.nav-btn .cnt{font-size:.78rem;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.nav-sep{height:1px;background:var(--rule);margin:8px 10px}
+.mainwrap{min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);padding:10px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar .mob-title{display:none;font-family:var(--serif);font-weight:600}
+.sess-pick{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.sess-pick select{max-width:420px;min-width:0;flex:1}
+.role{font-size:.8rem;color:var(--ink-2);border:1px solid var(--rule-2);border-radius:999px;padding:3px 10px;white-space:nowrap}
+main{padding:22px 24px 96px;max-width:1240px;width:100%}
+.bottomnav{display:none}
+@media (max-width: 900px){
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .topbar{padding:8px 14px}
+  .topbar .mob-title{display:block;width:100%}
+  main{padding:16px 14px 110px}
+  .bottomnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--rule);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
+  .bottomnav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;font-size:.72rem;color:var(--ink-2);border-radius:8px;cursor:pointer}
+  .bottomnav button[aria-current="page"]{color:var(--green);font-weight:600}
+  .bottomnav svg{width:22px;height:22px}
+  h1{font-size:1.45rem}
+}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--rule-2);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:500;line-height:1.2;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--green);border-color:var(--green);color:var(--on-green)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--rule))}
+.btn.ghost{border-color:transparent;background:none;color:var(--ink-2)}
+.btn.sm{padding:5px 10px;font-size:.86rem}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between}
+input[type=text],input[type=search],input[type=date],input[type=number],select,textarea{background:var(--surface);border:1px solid var(--rule-2);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+textarea{min-height:76px;resize:vertical}
+input:disabled,select:disabled,textarea:disabled{background:var(--surface-2);color:var(--ink-2)}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.86rem;color:var(--ink-2)}
+label.f > span{font-weight:500}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
+.span2{grid-column:1/-1}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:.78rem;font-weight:500;white-space:nowrap;line-height:1.5;border:1px solid transparent}
+.t-green{background:var(--green-wash);color:var(--green)}
+.t-blue{background:var(--blue-wash);color:var(--blue)}
+.t-amber{background:var(--amber-wash);color:var(--amber)}
+.t-red{background:var(--red-wash);color:var(--red)}
+.t-violet{background:var(--violet-wash);color:var(--violet)}
+.t-grey{background:var(--grey-wash);color:var(--grey)}
+.t-violet-o{border-color:var(--violet);color:var(--violet)}
+.t-grey-o{border-color:var(--grey);color:var(--grey)}
+.t-blue-o{border-color:var(--blue);color:var(--blue)}
+.t-red-o{border-color:var(--red);color:var(--red)}
+.t-pending{border:1px dashed var(--ink-3);color:var(--ink-2)}
+
+/* sections */
+.section{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:18px;margin-top:16px}
+.section > h2,.section > h3{margin-bottom:8px}
+.notice{border-left:3px solid var(--amber);background:var(--amber-wash);padding:10px 12px;border-radius:0 6px 6px 0;margin:10px 0;font-size:.92rem}
+.notice.info{border-color:var(--blue);background:var(--blue-wash)}
+.notice.bad{border-color:var(--red);background:var(--red-wash)}
+.notice.ok{border-color:var(--green);background:var(--green-wash)}
+.empty{text-align:center;padding:40px 16px;color:var(--ink-2)}
+.empty h2{color:var(--ink);margin-bottom:6px}
+
+/* hero / progress */
+.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;align-items:end;padding-bottom:18px;border-bottom:1px solid var(--rule)}
+@media (max-width:760px){.hero{grid-template-columns:1fr;gap:14px}}
+.hero .vid{font-family:var(--serif);color:var(--ink-2);font-size:.95rem}
+.pct{font-family:var(--serif);font-weight:700;font-size:3.6rem;line-height:1;font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em}
+.pct small{font-size:1.6rem;color:var(--ink-2);margin-left:2px}
+.bar{height:12px;background:var(--grey-wash);border-radius:2px;overflow:hidden;margin:10px 0 6px;display:flex}
+.bar i{display:block;height:100%}
+.bar .b-phys{background:var(--green)}
+.bar .b-acc{background:color-mix(in srgb,var(--green) 45%,var(--paper))}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+.states{list-style:none;margin:16px 0 0;padding:0;display:flex;gap:0;overflow-x:auto}
+.states li{flex:1;min-width:110px;padding:8px 10px 8px 0;border-top:3px solid var(--rule);color:var(--ink-3);font-size:.86rem}
+.states li.done{border-color:var(--green);color:var(--ink-2)}
+.states li.now{border-color:var(--green);color:var(--ink);font-weight:600}
+.states li b{display:block;font-family:var(--serif);font-size:.8rem;font-weight:600;color:inherit}
+
+/* ledger grid of counts */
+.ledger{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--rule);border-radius:8px;background:var(--surface);margin-top:18px;overflow:hidden}
+@media (max-width:900px){.ledger{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.ledger{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cell{padding:14px 16px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);background:none;border-top:0;border-left:0;text-align:left;cursor:pointer;color:inherit;display:flex;flex-direction:column;gap:2px;min-height:86px}
+.cell:hover{background:var(--surface-2)}
+.cell .v{font-family:var(--serif);font-size:1.75rem;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums lining-nums}
+.cell .l{font-size:.84rem;color:var(--ink-2)}
+.cell .s{font-size:.76rem;color:var(--ink-3)}
+.cell.k-red .v{color:var(--red)} .cell.k-amber .v{color:var(--amber)} .cell.k-violet .v{color:var(--violet)} .cell.k-blue .v{color:var(--blue)} .cell.k-green .v{color:var(--green)}
+
+/* tables */
+.tblwrap{overflow-x:auto;border:1px solid var(--rule);border-radius:8px;background:var(--surface);margin-top:12px}
+table.tbl{border-collapse:collapse;width:100%;font-size:.9rem}
+.tbl th{text-align:left;font-weight:600;font-size:.8rem;color:var(--ink-2);background:var(--surface-2);padding:9px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr.click{cursor:pointer}
+.tbl tbody tr.click:hover{background:var(--surface-2)}
+.tbl td.t{min-width:200px;max-width:340px}
+.tbl td.r,.tbl th.r{text-align:right}
+.tbl .sub{display:block;font-size:.8rem;color:var(--ink-3)}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;font-size:.88rem;color:var(--ink-2)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-top:12px}
+.chip{border:1px solid var(--rule-2);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:.85rem;cursor:pointer;white-space:nowrap;color:var(--ink-2)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.chip .n{font-variant-numeric:tabular-nums;opacity:.75;margin-left:4px}
+
+/* scan */
+.scanbox{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:18px;margin-top:14px}
+.scan-in{display:flex;gap:8px}
+.scan-in input{font-size:1.35rem;font-family:var(--serif);font-weight:600;padding:12px 14px;letter-spacing:.02em}
+.lastscan{margin-top:12px;padding:10px 12px;border-radius:6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin-top:14px}
+.tabs button{border:0;background:none;padding:8px 14px;cursor:pointer;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--green);font-weight:600}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer}
+
+/* stamp — the accession number as it appears in the register */
+.stamp{display:inline-flex;flex-direction:column;align-items:flex-start;border:2px solid var(--ink);border-radius:4px;padding:4px 12px 3px;font-family:var(--serif);line-height:1}
+.stamp small{font-family:var(--sans);font-size:.66rem;color:var(--ink-2);letter-spacing:.02em;margin-bottom:2px}
+.stamp b{font-size:1.9rem;font-weight:700;font-variant-numeric:tabular-nums lining-nums;border-bottom:3px double var(--ink);padding-bottom:2px}
+dl.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;margin:12px 0}
+@media (max-width:560px){dl.kv{grid-template-columns:1fr}}
+dl.kv div{border-bottom:1px solid var(--rule);padding-bottom:5px;min-width:0}
+dl.kv dt{font-size:.76rem;color:var(--ink-3)}
+dl.kv dd{margin:0;font-size:.92rem;overflow-wrap:anywhere}
+
+/* sheet */
+.overlay{position:fixed;inset:0;background:rgba(10,16,22,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--paper);width:100%;max-width:760px;max-height:94vh;overflow:auto;border-radius:12px 12px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 30px rgba(0,0,0,.18)}
+.sheet.wide{max-width:1000px}
+@media (min-width:901px){.overlay{align-items:center}.sheet{border-radius:12px;max-height:90vh}}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.sheet-foot{position:sticky;bottom:calc(-22px - env(safe-area-inset-bottom,0px));background:var(--paper);padding:12px 0 4px;margin-top:14px;border-top:1px solid var(--rule);display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.x{border:0;background:none;font-size:1.5rem;line-height:1;cursor:pointer;color:var(--ink-2);padding:2px 6px}
+.hist{list-style:none;padding:0;margin:8px 0 0;font-size:.86rem}
+.hist li{padding:7px 0;border-bottom:1px solid var(--rule)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.thumbs button{width:72px;height:72px;border:1px solid var(--rule-2);border-radius:6px;padding:0;overflow:hidden;background:var(--surface-2);cursor:pointer;font-size:.7rem;color:var(--ink-2)}
+.thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+details.disc{border:1px solid var(--rule);border-radius:8px;background:var(--surface);margin-top:10px}
+details.disc summary{cursor:pointer;padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center;list-style:none}
+details.disc summary::-webkit-details-marker{display:none}
+details.disc summary .n{font-family:var(--serif);font-weight:700;font-size:1.2rem;font-variant-numeric:tabular-nums}
+details.disc[open] summary{border-bottom:1px solid var(--rule)}
+details.disc .inner{padding:4px 14px 14px}
+details.disc .tblwrap{border:0;margin-top:0}
+.flow{list-style:none;padding:0;margin:10px 0 0;counter-reset:f;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.flow li{counter-increment:f;font-size:.84rem;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink-3)}
+.flow li::before{content:counter(f) ". ";font-family:var(--serif);font-weight:700}
+.flow li.done{color:var(--ink-2);border-color:color-mix(in srgb,var(--green) 40%,var(--rule))}
+.flow li.now{color:var(--ink);border-color:var(--green);background:var(--green-wash);font-weight:500}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:80;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92vw,520px)}
+#toast div{background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:8px;font-size:.9rem;box-shadow:0 4px 18px rgba(0,0,0,.2);pointer-events:auto}
+.banner{padding:8px 24px;font-size:.86rem;border-bottom:1px solid var(--rule)}
+.banner.local{background:var(--blue-wash);color:var(--ink)}
+.banner.lock{background:var(--violet-wash)}
+@media (max-width:900px){.banner{padding:8px 14px}}
+.preview{background:var(--grey-wash);padding:14px;border-radius:8px;overflow:auto}
+.preview .page{margin:0 auto 14px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+#print-root{display:none}
+
+/* A4 report pages (screen preview + print) */
+.page{width:210mm;min-height:297mm;padding:16mm 15mm;background:#fff;color:#111;font:10.5pt/1.45 var(--serif);position:relative}
+.page h1{font-size:17pt;text-align:center;margin-bottom:2mm;color:#111}
+.page h2{font-size:13pt;margin:6mm 0 2mm;color:#111}
+.page .center{text-align:center}
+.page .hdr{text-align:center;border-bottom:1.5pt double #111;padding-bottom:3mm;margin-bottom:5mm}
+.page .hdr b{display:block;font-size:14pt}
+.page table{border-collapse:collapse;width:100%;font:9pt/1.35 var(--sans);margin-top:2mm}
+.page th,.page td{border:.6pt solid #555;padding:1.6mm 2mm;text-align:left;vertical-align:top;color:#111}
+.page th{background:#eee}
+.page td.r{text-align:right}
+.page .cert{border:1.5pt solid #111;padding:8mm;margin-top:6mm}
+.page .sigs{display:grid;grid-template-columns:1fr 1fr;gap:16mm 14mm;margin-top:18mm}
+.page .sig{border-top:.8pt solid #111;padding-top:2mm;font:9pt var(--sans)}
+.page .draft{position:absolute;top:8mm;right:12mm;font:600 9pt var(--sans);color:#a1271d;border:1pt solid #a1271d;padding:1mm 3mm}
+.page .meta td{border:0;padding:.8mm 2mm .8mm 0;font-size:10pt;font-family:var(--serif)}
+.page .remark{border:.6pt solid #555;min-height:28mm;padding:3mm;white-space:pre-wrap;font-size:10pt}
+@media print{
+  @page{size:A4;margin:0}
+  html,body{background:#fff}
+  :root{padding:0}
+  body.printing .app,body.printing #sheet-root,body.printing #toast{display:none!important}
+  body.printing #print-root{display:block}
+  .page{box-shadow:none;margin:0;page-break-after:always;break-after:page}
+  .page:last-child{page-break-after:auto;break-after:auto}
+}
+@media (prefers-reduced-motion:no-preference){
+  .bar i{transition:width .5s ease}
+}
+.cam video{width:100%;max-height:60vh;background:#000;border-radius:8px}
+.sheet:focus{outline:none}
+[hidden]{display:none!important}
+@media (min-width:720px){.sheet dl.kv{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side" aria-label="Sections"></aside>
+  <div class="mainwrap">
+    <header class="topbar" id="topbar"></header>
+    <div id="banners"></div>
+    <main id="main" tabindex="-1"><div class="empty"><h2>Opening the verification register…</h2></div></main>
+  </div>
+  <nav class="bottomnav" id="bottomnav" aria-label="Sections"></nav>
+</div>
+<div id="sheet-root"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="print-root"></div>
+<script>
+'use strict';
+/* ============================================================
+   Library Physical Stock Verification & Reconciliation
+   ============================================================ */
+const CDN = {
+  xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  autotable: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+  zxing: 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js'
+};
+const _loaded = {};
+function loadScript(src) {
+  if (_loaded[src]) return _loaded[src];
+  _loaded[src] = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.crossOrigin = 'anonymous'; s.src = src; s.onload = res;
+    s.onerror = () => { delete _loaded[src]; rej(new Error('Could not load a required library. Check the connection and try again.')); };
+    document.head.appendChild(s);
+  });
+  return _loaded[src];
+}
+
+/* ---------- vocabulary ---------- */
+const ST = {
+  AV: 'Physically Available', IS: 'Issued', NF: 'Not Found', MI: 'Missing', DA: 'Damaged',
+  UR: 'Under Repair', WD: 'Withdrawn', TR: 'Transferred', EX: 'Extra/Unrecorded', DU: 'Duplicate',
+  WA: 'Wrong Accession Number', NV: 'Not Yet Verified'
+};
+const STATUS_LIST = Object.values(ST);
+const TONE = {
+  [ST.AV]: 'green', [ST.IS]: 'blue', [ST.NF]: 'amber', [ST.MI]: 'red', [ST.DA]: 'violet', [ST.UR]: 'violet-o',
+  [ST.WD]: 'grey', [ST.TR]: 'grey-o', [ST.EX]: 'blue-o', [ST.DU]: 'red-o', [ST.WA]: 'red-o', [ST.NV]: 'pending'
+};
+const CONDITIONS = ['Good', 'Fair', 'Poor', 'Damaged', 'Severely Damaged', 'Termite Damaged', 'Pages Missing', 'Binding Damaged', 'Pages Oxidised', 'Water Damaged'];
+const SEVERE = new Set(['Damaged', 'Severely Damaged', 'Termite Damaged', 'Pages Missing', 'Binding Damaged', 'Water Damaged']);
+const WORN = new Set(['Poor', 'Pages Oxidised']);
+const ACTIONS = ['Repair', 'Rebind', 'Replace', 'Withdraw', 'Continue in use'];
+const RECOVERY = ['Under investigation', 'Recovered', 'Not recovered', 'Written off'];
+const SESSION_STATES = ['Not Started', 'In Progress', 'Completed', 'Submitted', 'Approved'];
+const PHYS = new Set([ST.AV, ST.DA, ST.UR, ST.DU, ST.WA]);
+const REG_F = ['a', 't', 'au', 'p', 'ed', 'isbn', 'sub', 'cls', 'pr', 'pd', 'sup', 'bill', 'st', 'rack', 'lit', 'lid', 'lrd'];
+const REG_LABEL = {
+  a: 'Accession No.', t: 'Title', au: 'Author', p: 'Publisher', ed: 'Edition', isbn: 'ISBN', sub: 'Subject', cls: 'Class',
+  pr: 'Price', pd: 'Date of purchase', sup: 'Supplier', bill: 'Bill No.', st: 'Register status', rack: 'Rack/location',
+  lit: 'Last issued to', lid: 'Last issue date', lrd: 'Last return date'
+};
+const REG_STATUSES = ['Available', 'Issued', 'Withdrawn', 'Transferred', 'Lost', 'Under Repair'];
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clone = o => o == null ? o : JSON.parse(JSON.stringify(o));
+const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function deepMerge(t, s) {
+  for (const k of Object.keys(s)) {
+    const v = s[k];
+    if (v && typeof v === 'object' && !Array.isArray(v) && t[k] && typeof t[k] === 'object' && !Array.isArray(t[k])) deepMerge(t[k], v);
+    else t[k] = clone(v);
+  }
+  return t;
+}
+function toDate(v) {
+  if (!v) return null;
+  if (typeof v === 'number') return new Date(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return new Date(v + 'T00:00:00');
+  const d = new Date(v); return isNaN(d) ? null : d;
+}
+function fmtDate(v) { const d = toDate(v); return d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : (v || ''); }
+function fmtDT(v) { const d = toDate(v); return d ? d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const nf = n => Number(n || 0).toLocaleString('en-IN');
+function inr(n) { if (n === '' || n == null || isNaN(+n)) return ''; return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+function rs(n) { if (n === '' || n == null || isNaN(+n)) return ''; return 'Rs. ' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+function pct(a, b) { return b ? (a / b * 100).toFixed(1) + '%' : '—'; }
+function normAcc(s) {
+  s = String(s ?? '').trim().toUpperCase().replace(/\s+/g, '');
+  if (/^\d+$/.test(s)) return String(parseInt(s, 10));
+  return s;
+}
+function accNum(a) { const m = String(a).match(/\d+/g); return m ? parseInt(m[m.length - 1], 10) : NaN; }
+function cmpAcc(a, b) {
+  const x = accNum(a), y = accNum(b);
+  if (!isNaN(x) && !isNaN(y) && x !== y) return x - y;
+  return String(a).localeCompare(String(b));
+}
+const keyOf = acc => String(acc).replace(/[^A-Za-z0-9_-]/g, c => '~' + c.charCodeAt(0).toString(16));
+function bucketOf(acc) { const n = accNum(acc); return isNaN(n) ? 'bx' : 'b' + Math.floor(n / 100); }
+const badge = (st, extra = '') => `<span class="badge t-${TONE[st] || 'grey'}">${esc(st)}${extra}</span>`;
+const sbadge = st => {
+  const t = { 'Not Started': 'pending', 'In Progress': 'amber', 'Completed': 'blue', 'Submitted': 'violet', 'Approved': 'green' }[st] || 'grey';
+  return `<span class="badge t-${t}">${esc(st)}</span>`;
+};
+function toast(msg, ms = 3200) {
+  const d = document.createElement('div'); d.textContent = msg; $('#toast').appendChild(d);
+  setTimeout(() => d.remove(), ms);
+}
+function dbErr(e) {
+  const c = e && e.code;
+  if (c === 'quota_exceeded') return 'Storage for this register is full. Remove old photographs or documents, then try again.';
+  if (c === 'invalid_argument') return 'This change was refused. You may not have permission to edit this record.';
+  if (c === 'resource_exhausted') return 'Too many changes at once. Wait a moment and try again.';
+  if (c === 'revoked') return 'Access to this register has changed. Reload the page.';
+  return (e && e.message) || 'The change could not be saved. Try again.';
+}
+
+/* ---------- storage: shared database, with an on-device fallback ---------- */
+function idbOpen() {
+  return new Promise((res, rej) => {
+    if (!('indexedDB' in window)) return rej(new Error('IndexedDB unavailable'));
+    const r = indexedDB.open('library-stock-verification', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+function idbAll(db) {
+  return new Promise((res, rej) => {
+    const out = []; const c = db.transaction('kv', 'readonly').objectStore('kv').openCursor();
+    c.onsuccess = () => { const cur = c.result; if (cur) { out.push([cur.key, cur.value]); cur.continue(); } else res(out); };
+    c.onerror = () => rej(c.error);
+  });
+}
+const Local = {
+  mem: new Map(), listeners: new Set(), idb: null, pend: new Map(), t: null, bc: null,
+  async load() {
+    try { this.idb = await idbOpen(); for (const [k, v] of await idbAll(this.idb)) this.mem.set(k, v); } catch (e) { this.idb = null; }
+    // bring over records saved by an earlier single-file version (browser storage)
+    try {
+      const old = [];
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('lsv:')) old.push(k); }
+      for (const k of old) { const p = k.slice(4); if (!this.mem.has(p)) { this.mem.set(p, JSON.parse(localStorage.getItem(k))); if (this.idb) this.pend.set(p, this.mem.get(p)); } }
+      if (this.idb && old.length) { await this.flush(); old.forEach(k => localStorage.removeItem(k)); }
+    } catch (e) { }
+    try {
+      this.bc = new BroadcastChannel('lsv-sync');
+      this.bc.onmessage = ev => {
+        const m = ev.data || {};
+        if (m.reload) return location.reload();
+        if (!m.path) return;
+        if (m.data === null) this.mem.delete(m.path); else this.mem.set(m.path, m.data);
+        this.notify(m.path);
+      };
+    } catch (e) { }
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.flush(); });
+    window.addEventListener('pagehide', () => this.flush());
+  },
+  persist(path) {
+    const v = this.mem.get(path);
+    if (this.bc) try { this.bc.postMessage({ path, data: v === undefined ? null : v }); } catch (e) { }
+    if (!this.idb) {
+      try { if (v === undefined) localStorage.removeItem('lsv:' + path); else localStorage.setItem('lsv:' + path, JSON.stringify(v)); }
+      catch (e) { toast('This device has run out of storage space. Download a backup, then remove data you no longer need.'); }
+      return;
+    }
+    this.pend.set(path, v); clearTimeout(this.t); this.t = setTimeout(() => this.flush(), 60);
+  },
+  flush() {
+    if (!this.idb || !this.pend.size) return Promise.resolve();
+    const items = [...this.pend]; this.pend.clear();
+    return new Promise(res => {
+      const tx = this.idb.transaction('kv', 'readwrite'); const st = tx.objectStore('kv');
+      for (const [k, v] of items) { if (v === undefined) st.delete(k); else st.put(v, k); }
+      tx.oncomplete = () => res();
+      tx.onerror = tx.onabort = () => { toast('This device has run out of storage space. Download a backup, then remove data you no longer need.', 6000); res(); };
+    });
+  },
+  async replaceAll(data) {
+    this.mem = new Map(Object.entries(data || {}));
+    if (this.idb) {
+      await new Promise((res, rej) => {
+        const tx = this.idb.transaction('kv', 'readwrite'); const st = tx.objectStore('kv'); st.clear();
+        for (const [k, v] of this.mem) st.put(v, k);
+        tx.oncomplete = res; tx.onerror = tx.onabort = () => rej(tx.error || new Error('Storage is full.'));
+      });
+    } else {
+      try { Object.keys(localStorage).filter(k => k.startsWith('lsv:')).forEach(k => localStorage.removeItem(k)); for (const [k, v] of this.mem) localStorage.setItem('lsv:' + k, JSON.stringify(v)); }
+      catch (e) { throw new Error('This browser does not have enough storage for the backup.'); }
+    }
+    if (this.bc) try { this.bc.postMessage({ reload: true }); } catch (e) { }
+  },
+  notify(path) { for (const l of [...this.listeners]) try { l(path); } catch (e) { console.error(e); } },
+  list(col) {
+    const out = []; const pre = col + '/';
+    for (const [p, v] of this.mem) if (p.startsWith(pre) && !p.slice(pre.length).includes('/')) out.push({ id: p.slice(pre.length), data: v });
+    return out.sort((a, b) => a.id < b.id ? -1 : 1);
+  }
+};
+const _chains = {};
+function chain(path, fn) {
+  const p = (_chains[path] || Promise.resolve()).catch(() => {}).then(fn);
+  _chains[path] = p; return p;
+}
+async function retry(fn) {
+  try { return await fn(); } catch (e) {
+    if (e && e.code === 'unavailable') { await new Promise(r => setTimeout(r, 400 + Math.random() * 600)); return await fn(); }
+    throw e;
+  }
+}
+const Store = {
+  async get(path) {
+    if (S.mode === 'db') { const s = await retry(() => S.db.doc(path).get()); return s.exists ? clone(s.data()) : null; }
+    return clone(Local.mem.get(path) ?? null);
+  },
+  set(path, data) {
+    data = clone(data);
+    return chain(path, async () => {
+      if (S.mode === 'db') return retry(() => S.db.doc(path).set(data));
+      Local.mem.set(path, clone(data)); Local.persist(path); Local.notify(path);
+    });
+  },
+  merge(path, data) {
+    data = clone(data);
+    return chain(path, async () => {
+      if (S.mode === 'db') {
+        try { await retry(() => S.db.doc(path).update(data)); }
+        catch (e) {
+          if (e && e.code === 'invalid_argument') {
+            const s = await S.db.doc(path).get();
+            if (!s.exists) return retry(() => S.db.doc(path).set(data));
+          }
+          throw e;
+        }
+        return;
+      }
+      const cur = clone(Local.mem.get(path)) || {};
+      Local.mem.set(path, deepMerge(cur, data)); Local.persist(path); Local.notify(path);
+    });
+  },
+  del(path) {
+    return chain(path, async () => {
+      if (S.mode === 'db') return retry(() => S.db.doc(path).delete());
+      Local.mem.delete(path); Local.persist(path); Local.notify(path);
+    });
+  },
+  async list(col) {
+    if (S.mode === 'db') { const q = await retry(() => S.db.collection(col).get()); return q.docs.map(d => ({ id: d.id, data: d.data() })); }
+    return Local.list(col).map(d => ({ id: d.id, data: clone(d.data) }));
+  },
+  watch(col, cb) {
+    if (S.mode === 'db') {
+      return S.db.collection(col).onSnapshot(q => cb(q.docs.map(d => ({ id: d.id, data: d.data() }))), e => toast(dbErr(e)));
+    }
+    const pre = col + '/';
+    const fn = p => { if (p.startsWith(pre) && !p.slice(pre.length).includes('/')) cb(Local.list(col)); };
+    Local.listeners.add(fn); cb(Local.list(col));
+    return () => Local.listeners.delete(fn);
+  },
+  watchDoc(path, cb) {
+    if (S.mode === 'db') return S.db.doc(path).onSnapshot(s => cb(s.exists ? s.data() : null), e => toast(dbErr(e)));
+    const fn = p => { if (p === path) cb(Local.mem.get(path) ?? null); };
+    Local.listeners.add(fn); cb(Local.mem.get(path) ?? null);
+    return () => Local.listeners.delete(fn);
+  }
+};
+
+/* ---------- state ---------- */
+const S = {
+  mode: 'local', db: null, user: null, uid: 'local', isAdmin: true, canWrite: true, names: {},
+  regMeta: null, regChunks: [], register: new Map(), regList: [], regDups: [],
+  sessions: [], sid: null, curBase: null, lockedMeta: null, lockedReg: null, lockedRegList: null, lockWarn: false,
+  entries: new Map(), audit: [], corrections: [], subs: [],
+  view: 'dashboard', ver: 0,
+  books: { filter: 'all', q: '', page: 0 },
+  inv: { filter: 'open' }, aud: { q: '' }, reg: { q: '', page: 0 },
+  scan: { tab: 'scan', quick: false, field: 'a', q: '', last: null },
+  downloads: undefined, fileCache: {}, sheetCtx: null
+};
+function uiGet(k, d) { try { const v = localStorage.getItem('lsv-ui:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+function uiSet(k, v) { try { localStorage.setItem('lsv-ui:' + k, JSON.stringify(v)); } catch (e) { } }
+
+function sess() {
+  const live = S.sessions.find(x => x.id === S.sid);
+  if (!live) return null;
+  if (live.status === 'Approved' && S.lockedMeta) return { ...S.lockedMeta, status: 'Approved', lockedAt: live.lockedAt };
+  return live;
+}
+const isLocked = s => !!s && (s.status === 'Submitted' || s.status === 'Approved');
+function nameOf(id) {
+  if (S.mode === 'local') return id || '—';
+  if (!id) return '—';
+  return S.names[id] || (id === S.uid ? 'You' : 'Member ' + String(id).slice(-4));
+}
+async function resolveNames(ids) {
+  if (!S.user || S.mode !== 'db') return;
+  const miss = [...new Set(ids)].filter(i => i && !(i in S.names));
+  if (!miss.length) return;
+  miss.forEach(i => S.names[i] = '');
+  try {
+    const ps = await S.user.profiles(miss);
+    for (const i of miss) S.names[i] = (ps[i] && ps[i].name) || '';
+    bump();
+  } catch (e) { }
+}
+
+/* ---------- stock register ---------- */
+const recFromArr = arr => { const r = {}; REG_F.forEach((k, i) => { if (arr[i] !== '' && arr[i] != null) r[k] = arr[i]; }); return r; };
+const recToArr = r => REG_F.map(k => r[k] ?? '');
+function buildRegister(rows) {
+  const map = new Map(), list = [], dupMap = new Map();
+  for (const r of rows) {
+    if (!r.a) continue;
+    if (map.has(r.a)) {
+      if (!dupMap.has(r.a)) dupMap.set(r.a, [map.get(r.a)]);
+      dupMap.get(r.a).push(r);
+      continue;
+    }
+    map.set(r.a, r); list.push(r);
+  }
+  list.sort((x, y) => cmpAcc(x.a, y.a));
+  return { map, list, dups: [...dupMap.entries()].map(([a, recs]) => ({ a, recs })) };
+}
+function rebuildRegister() {
+  const gen = S.regMeta && S.regMeta.gen;
+  const docs = (S.regChunks || []).filter(d => d.data.gen === gen).sort((a, b) => a.data.idx - b.data.idx);
+  const rows = [];
+  for (const d of docs) for (const arr of d.data.rows || []) rows.push(recFromArr(arr));
+  const b = buildRegister(rows);
+  S.register = b.map; S.regList = b.list; S.regDups = b.dups;
+  bump();
+}
+const regMap = () => S.lockedReg || S.register;
+const regRec = acc => regMap().get(acc);
+
+/* ---------- session model (derived) ---------- */
+function inRange(s, acc) {
+  if (!s) return false;
+  const a = s.rangeStart, b = s.rangeEnd;
+  if ((a === '' || a == null) && (b === '' || b == null)) return true;
+  const n = accNum(acc); if (isNaN(n)) return false;
+  return n >= (a === '' || a == null ? -Infinity : +a) && n <= (b === '' || b == null ? Infinity : +b);
+}
+function eff(rec, e) {
+  if (e) return e.status;
+  switch (rec && rec.st) {
+    case 'Issued': return ST.IS;
+    case 'Withdrawn': return ST.WD;
+    case 'Transferred': return ST.TR;
+    case 'Lost': return ST.MI;
+    case 'Under Repair': return ST.UR;
+    default: return ST.NV;
+  }
+}
+const normLoc = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+let _M = null;
+function model() {
+  const s = sess(); if (!s) return null;
+  if (_M && _M.ver === S.ver && _M.sid === s.id) return _M;
+  const map = regMap(); const list = S.lockedRegList || S.regList;
+  const rows = [];
+  for (const rec of list) if (inRange(s, rec.a)) { const e = S.entries.get(rec.a); rows.push({ acc: rec.a, rec, e, status: eff(rec, e), extra: false }); }
+  const extras = [];
+  for (const e of S.entries.values()) if (!map.has(e.acc)) extras.push({ acc: e.acc, rec: { a: e.acc, ...(e.extra || {}) }, e, status: e.status, extra: true });
+  extras.sort((x, y) => cmpAcc(x.acc, y.acc));
+  const c = {}; STATUS_LIST.forEach(k => c[k] = 0);
+  let phys = 0, cond = 0, value = 0, dupCopies = [];
+  for (const r of rows) {
+    c[r.status]++;
+    if (r.e && PHYS.has(r.status) && r.e.method !== 'bulk') phys++;
+    if (r.e && (r.e.dupCopies || 0) > 0) dupCopies.push(r);
+    if ((r.status === ST.NF || r.status === ST.MI) && r.rec.pr) value += +r.rec.pr || 0;
+  }
+  const exCount = extras.filter(r => r.status !== ST.WA).length;
+  const waExtra = extras.filter(r => r.status === ST.WA).length;
+  const total = rows.length, pending = c[ST.NV], accounted = total - pending;
+  // accession gaps within the range
+  const gaps = [];
+  const nums = rows.map(r => accNum(r.acc)).filter(n => !isNaN(n)).sort((a, b) => a - b);
+  if (nums.length) {
+    const lo = (s.rangeStart !== '' && s.rangeStart != null) ? +s.rangeStart : nums[0];
+    const hi = (s.rangeEnd !== '' && s.rangeEnd != null) ? +s.rangeEnd : nums[nums.length - 1];
+    const set = new Set(nums);
+    let start = null;
+    for (let n = lo; n <= hi && n - lo < 200000; n++) {
+      if (!set.has(n)) { if (start === null) start = n; }
+      else if (start !== null) { gaps.push([start, n - 1]); start = null; }
+    }
+    if (start !== null) gaps.push([start, hi]);
+  }
+  const gapCount = gaps.reduce((a, g) => a + g[1] - g[0] + 1, 0);
+  const regDups = S.lockedReg ? (S.lockedMeta && S.lockedMeta.regDups || []) : S.regDups.filter(d => inRange(s, d.a));
+  const locMismatch = rows.filter(r => r.e && PHYS.has(r.status) && r.e.foundRack && r.rec.rack && normLoc(r.e.foundRack) !== normLoc(r.rec.rack));
+  const circMismatch = rows.filter(r => r.rec.st === 'Issued' && r.e && PHYS.has(r.status));
+  const damaged = rows.concat(extras).filter(r => r.status === ST.DA || r.status === ST.UR || (r.e && (SEVERE.has(r.e.condition) || WORN.has(r.e.condition))));
+  _M = {
+    ver: S.ver, sid: s.id, s, rows, extras, c, phys, total, pending, accounted, gaps, gapCount, regDups, locMismatch, circMismatch,
+    dupCopies, damaged, value, exCount, waExtra,
+    pctAcc: total ? accounted / total * 100 : 0, pctPhys: total ? phys / total * 100 : 0
+  };
+  return _M;
+}
+function summaryOf(m) {
+  return {
+    total: m.total, accounted: m.accounted, phys: m.phys, available: m.c[ST.AV], issued: m.c[ST.IS], notFound: m.c[ST.NF],
+    missing: m.c[ST.MI], damaged: m.c[ST.DA], repair: m.c[ST.UR], withdrawn: m.c[ST.WD], transferred: m.c[ST.TR],
+    extra: m.exCount, duplicate: m.c[ST.DU] + m.dupCopies.length, wrongAcc: m.c[ST.WA] + m.waExtra, pending: m.pending,
+    pct: +m.pctAcc.toFixed(1), value: m.value, at: Date.now()
+  };
+}
+
+/* ---------- boot ---------- */
+let _rq = false;
+function bump() { S.ver++; if (!_rq) { _rq = true; requestAnimationFrame(() => { _rq = false; render(); }); } }
+
+async function boot() {
+  await Local.load();
+  S.view = uiGet('view', 'dashboard');
+  S.scan.quick = uiGet('quick', false);
+  const C = window.claude;
+  let db = null, user = null;
+  if (C && typeof C.use === 'function') {
+    try { [db, user] = await Promise.all([C.use('db'), C.use('user')]); } catch (e) { }
+  }
+  if (db) { S.mode = 'db'; S.db = db; }
+  if (user) {
+    S.user = user;
+    try { S.uid = (await user.id()) || 'viewer'; } catch (e) { S.uid = 'viewer'; }
+    try { S.isAdmin = !!(await user.canEdit()); } catch (e) { S.isAdmin = false; }
+    try { const w = await user.can('data.write'); S.canWrite = w !== false; } catch (e) { }
+    if (S.mode !== 'db') { S.isAdmin = true; S.canWrite = true; S.uid = 'local'; }
+  } else if (S.mode === 'db') { S.isAdmin = false; }
+  if (S.mode === 'local') {
+    S.uid = uiGet('operator', '');
+    Store.watchDoc('config/security', d => { S.sec = d; refreshRole(); });
+    if (navigator.storage && navigator.storage.persist && Local.mem.size) navigator.storage.persist().catch(() => {});
+  }
+  setTimeout(() => { S.loadedReg = S.loadedSess = true; bump(); }, 6000);
+  if (S.mode === 'local') setTimeout(() => { if (!S.uid) operatorSheet(true); }, 300);
+  Store.watchDoc('master/register', d => { S.regMeta = d; S.loadedReg = true; rebuildRegister(); });
+  Store.watch('master/register/chunks', docs => { S.regChunks = docs; rebuildRegister(); });
+  Store.watch('sessions', docs => {
+    S.loadedSess = true;
+    S.sessions = docs.map(d => ({ ...d.data, id: d.id })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const want = S.sid || uiGet('sid', null);
+    const exists = S.sessions.find(x => x.id === want);
+    const target = exists ? want : (S.sessions[0] && S.sessions[0].id);
+    const live = S.sessions.find(x => x.id === target);
+    const base = live ? baseFor(live) : null;
+    if (target && (target !== S.sid || base !== S.curBase)) openSession(target);
+    else bump();
+  });
+  bump();
+}
+function baseFor(live) { return live.status === 'Approved' && live.lockedAt ? `locked/records/sessions/${live.id}` : `sessions/${live.id}`; }
+
+let _openTok = 0;
+async function openSession(sid) {
+  const tok = ++_openTok;
+  S.subs.forEach(u => { try { u(); } catch (e) { } });
+  S.subs = []; S.entries = new Map(); S.audit = []; S.corrections = [];
+  S.lockedMeta = null; S.lockedReg = null; S.lockedRegList = null; S.lockWarn = false;
+  S.sid = sid; uiSet('sid', sid);
+  const live = S.sessions.find(x => x.id === sid);
+  if (!live) { S.curBase = null; bump(); return; }
+  let base = `sessions/${sid}`;
+  if (live.status === 'Approved' && live.lockedAt) {
+    const lb = `locked/records/sessions/${sid}`;
+    try {
+      const lm = await Store.get(lb);
+      if (tok !== _openTok) return;
+      if (lm) {
+        const chunks = await Store.list(lb + '/register');
+        if (tok !== _openTok) return;
+        const rows = [];
+        chunks.sort((a, b) => a.data.idx - b.data.idx).forEach(c => (c.data.rows || []).forEach(r => rows.push(recFromArr(r))));
+        const b = buildRegister(rows);
+        S.lockedMeta = lm; S.lockedReg = b.map; S.lockedRegList = b.list; base = lb;
+      } else S.lockWarn = true;
+    } catch (e) { S.lockWarn = true; }
+  }
+  if (tok !== _openTok) return;
+  S.curBase = base;
+  S.subs.push(Store.watch(base + '/buckets', docs => {
+    const m = new Map(); const ids = [];
+    for (const d of docs) for (const v of Object.values((d.data && d.data.items) || {})) {
+      if (!v || !v.acc || v.removed) continue; m.set(v.acc, v); ids.push(v.by);
+    }
+    S.entries = m; bump(); resolveNames(ids);
+  }));
+  S.subs.push(Store.watch(base + '/audit', docs => {
+    const ev = [];
+    for (const d of docs) for (const [id, v] of Object.entries((d.data && d.data.events) || {})) ev.push({ id, ...v });
+    ev.sort((a, b) => b.t - a.t); S.audit = ev; bump(); resolveNames(ev.map(e => e.uid));
+  }));
+  S.subs.push(Store.watch(`sessions/${sid}/corrections`, docs => {
+    S.corrections = docs.map(d => ({ id: d.id, ...d.data })).sort((a, b) => b.at - a.at); bump();
+    resolveNames(S.corrections.flatMap(c => [c.by, c.decidedBy]));
+  }));
+  bump();
+}
+
+/* ---------- permissions ---------- */
+function canWork() { const s = sess(); return !!s && S.canWrite && (!isLocked(s) || S.isAdmin); }
+function lockReason(s) {
+  if (!S.canWrite) return 'You have view-only access to this register.';
+  if (s && s.status === 'Approved') return 'This verification is approved and locked.';
+  if (s && s.status === 'Submitted') return 'This verification has been submitted for approval.';
+  return '';
+}
+
+/* ---------- audit trail ---------- */
+function shardId(suffix = '') {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}-${Math.floor(d.getMinutes() / 15)}${suffix}`;
+}
+async function logEvents(evs, base = S.curBase) {
+  if (!evs.length || !base) return;
+  const t = Date.now();
+  for (let i = 0; i < evs.length; i += 400) {
+    const part = {}; evs.slice(i, i + 400).forEach(ev => part[rid() + Math.random().toString(36).slice(2, 5)] = { t, uid: S.uid, ...ev });
+    await Store.merge(`${base}/audit/${shardId(i ? '-p' + (i / 400) : '')}`, { events: part });
+  }
+}
+const logEvent = (ev, base) => logEvents([ev], base);
+
+/* ---------- saving verification entries ---------- */
+async function saveEntry(acc, patch, opt = {}) {
+  const s = sess(); if (!s) { toast('Create or open a verification session first.'); return false; }
+  if (!S.canWrite) { toast(lockReason(s)); return false; }
+  const locked = isLocked(s);
+  if (locked && !S.isAdmin) { toast('This session is locked. Request a correction instead.'); return false; }
+  if (locked && !opt.reason) { toast('Enter the reason for this authorized correction.'); return false; }
+  const prev = S.entries.get(acc) || null;
+  const rec = regRec(acc);
+  const prevStatus = prev ? prev.status : (rec ? eff(rec, null) : '—');
+  const next = deepMerge(clone(prev) || { acc }, patch);
+  next.acc = acc; next.at = Date.now(); next.by = S.uid;
+  if (!next.firstAt) next.firstAt = next.at;
+  if (locked) next.corrected = { at: next.at, by: S.uid, reason: opt.reason };
+  const base = S.curBase;
+  try {
+    await Store.merge(`${base}/buckets/${bucketOf(acc)}`, { items: { [keyOf(acc)]: next } });
+  } catch (e) { toast(dbErr(e)); return false; }
+  S.entries.set(acc, next); bump();
+  const changes = [];
+  if (prev && patch.condition && prev.condition !== patch.condition) changes.push(`condition ${prev.condition || '—'} → ${patch.condition}`);
+  if (prev && patch.foundRack !== undefined && (prev.foundRack || '') !== (patch.foundRack || '')) changes.push(`location ${prev.foundRack || '—'} → ${patch.foundRack || '—'}`);
+  logEvent({
+    action: opt.action || (prev ? 'Updated verification' : 'Verified'), acc, prev: prevStatus, next: next.status,
+    remarks: [opt.reason ? 'Authorized correction: ' + opt.reason : '', opt.note || patch.remarks || '', changes.join('; ')].filter(Boolean).join(' | ').slice(0, 600),
+    authorized: locked || undefined, method: patch.method || undefined
+  }).catch(e => toast(dbErr(e)));
+  if (s.status === 'Not Started') updateSession({ status: 'In Progress', startedAt: Date.now() }, 'Verification started', true);
+  return true;
+}
+async function updateSession(patchIn, note, silent) {
+  const s = sess(); if (!s) return;
+  const { _remarks, ...patch } = patchIn;
+  try {
+    if (s.status === 'Approved' && S.lockedMeta) {
+      await Store.merge(`locked/records/sessions/${s.id}`, patch);
+      S.lockedMeta = deepMerge(clone(S.lockedMeta), patch);
+    } else await Store.merge(`sessions/${s.id}`, patch);
+    if (note) logEvent({ action: note, acc: '', prev: s.status, next: patch.status || s.status, remarks: _remarks || '' });
+    if (!silent) bump();
+  } catch (e) { toast(dbErr(e)); }
+}
+
+/* ---------- files (photos / documents) ---------- */
+function compressImage(file, max = 1100, q = 0.62) {
+  return new Promise((res, rej) => {
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      let d = c.toDataURL('image/jpeg', q);
+      if (d.length > 230000) d = c.toDataURL('image/jpeg', 0.4);
+      res(d);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('That image could not be read.')); };
+    img.src = url;
+  });
+}
+const readDataURL = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+async function uploadFiles(acc, files, kind) {
+  const s = sess(); const refs = [];
+  for (const f of files) {
+    try {
+      let data;
+      if (f.type.startsWith('image/')) data = await compressImage(f);
+      else if (f.size <= 175000) data = await readDataURL(f);
+      else { toast(`${f.name} is larger than 170 KB. Scan it at a lower resolution or attach a photo of it.`); continue; }
+      const id = 'f' + rid();
+      await Store.set(`sessions/${s.id}/files/${id}`, { acc, kind, name: f.name.slice(0, 120), type: f.type || 'application/octet-stream', data, at: Date.now(), by: S.uid });
+      refs.push({ id, kind, name: f.name.slice(0, 120), type: f.type });
+    } catch (e) { toast(dbErr(e)); }
+  }
+  return refs;
+}
+async function getFile(id) {
+  if (S.fileCache[id]) return S.fileCache[id];
+  const d = await Store.get(`sessions/${S.sid}/files/${id}`);
+  if (d) S.fileCache[id] = d;
+  return d;
+}
+function hydrateThumbs(root) {
+  $$('img[data-file]', root).forEach(async img => {
+    const f = await getFile(img.dataset.file).catch(() => null);
+    if (f && f.data) img.src = f.data; else img.replaceWith(document.createTextNode('—'));
+  });
+}
+
+/* ---------- corrections after finalisation ---------- */
+async function requestCorrection(acc, proposed, reason) {
+  const s = sess();
+  const id = 'c' + rid();
+  try {
+    await Store.set(`sessions/${s.id}/corrections/${id}`, { acc, proposed, reason: reason.slice(0, 600), by: S.uid, at: Date.now(), state: 'Pending' });
+    toast('Correction request sent for approval.');
+  } catch (e) { toast(dbErr(e)); }
+}
+async function decideCorrection(id, approve, note) {
+  const c = S.corrections.find(x => x.id === id); if (!c) return;
+  if (approve) {
+    const ok = await saveEntry(c.acc, { ...c.proposed }, { reason: `Correction request approved. Requested reason: ${c.reason}${note ? '. Officer note: ' + note : ''}`, action: 'Correction approved' });
+    if (!ok) return;
+  } else {
+    logEvent({ action: 'Correction rejected', acc: c.acc, prev: '', next: '', remarks: `${c.reason}${note ? ' | Officer note: ' + note : ''}` }).catch(() => {});
+  }
+  try { await Store.merge(`sessions/${S.sid}/corrections/${id}`, { state: approve ? 'Approved' : 'Rejected', decidedBy: S.uid, decidedAt: Date.now(), note: note || '' }); }
+  catch (e) { toast(dbErr(e)); }
+}
+
+/* ---------- workflow ---------- */
+async function bulkNotFound() {
+  const m = model(); const s = m.s;
+  const pend = m.rows.filter(r => r.status === ST.NV);
+  if (!pend.length) return;
+  const byBucket = {}; const now = Date.now();
+  for (const r of pend) {
+    const e = { acc: r.acc, status: ST.NF, condition: '', method: 'bulk', remarks: 'Not located on the shelves during physical verification.', at: now, firstAt: now, by: S.uid };
+    (byBucket[bucketOf(r.acc)] ||= {})[keyOf(r.acc)] = e;
+  }
+  try {
+    for (const [b, items] of Object.entries(byBucket)) await Store.merge(`${S.curBase}/buckets/${b}`, { items });
+    await logEvents(pend.map(r => ({ action: 'Marked not found (bulk)', acc: r.acc, prev: ST.NV, next: ST.NF, remarks: 'Remaining unverified books marked Not Found' })));
+    toast(`${nf(pend.length)} books marked Not Found.`);
+    if (s.status === 'Not Started') updateSession({ status: 'In Progress' }, '', true);
+  } catch (e) { toast(dbErr(e)); }
+}
+async function approveAndLock() {
+  const s = sess(); const m = model();
+  if (!S.isAdmin) return toast('Only an authorized officer can approve.');
+  const live = `sessions/${s.id}`, lock = `locked/records/sessions/${s.id}`;
+  toast('Approving and locking the verification record…', 5000);
+  try {
+    const now = Date.now(); const summary = summaryOf(m);
+    const buckets = await Store.list(live + '/buckets');
+    for (const b of buckets) await Store.set(`${lock}/buckets/${b.id}`, b.data);
+    const recs = S.regList.filter(r => inRange(s, r.a));
+    const dupRecs = S.regDups.filter(d => inRange(s, d.a));
+    let n = 0;
+    for (let i = 0; i < recs.length; i += 500) { await Store.set(`${lock}/register/c${n}`, { idx: n, rows: recs.slice(i, i + 500).map(recToArr) }); n++; }
+    const audits = await Store.list(live + '/audit');
+    for (const a of audits) await Store.set(`${lock}/audit/${a.id}`, a.data);
+    const meta = { ...s, status: 'Approved', approvedAt: now, approvedBy: S.uid, summary, regChunks: n, regDups: dupRecs, regGen: S.regMeta && S.regMeta.gen || '' };
+    delete meta.id;
+    await Store.set(lock, meta);
+    await logEvent({ action: 'Approved and locked', acc: '', prev: 'Submitted', next: 'Approved', remarks: `Verification approved. ${summary.pct}% of stock accounted for.` }, lock);
+    await Store.merge(live, { status: 'Approved', approvedAt: now, approvedBy: S.uid, lockedAt: now, summary });
+    toast('Verification approved. The record is now locked.');
+  } catch (e) { toast(dbErr(e)); }
+}
+
+/* ---------- register import ---------- */
+const HEADER_ALIASES = {
+  a: ['accession', 'accessionno', 'accno', 'accnumber', 'accessionnumber', 'accn', 'accnno'],
+  t: ['title', 'booktitle', 'nameofbook'], au: ['author', 'authors', 'authorname'], p: ['publisher', 'publishers'],
+  ed: ['edition'], isbn: ['isbn', 'isbnno'], sub: ['subject'], cls: ['class', 'classno', 'classnumber', 'classification', 'callno'],
+  pr: ['price', 'cost', 'rate', 'amount'], pd: ['dateofpurchase', 'purchasedate', 'dateofreceipt', 'date'], sup: ['supplier', 'vendor', 'source'],
+  bill: ['billno', 'billnumber', 'invoiceno', 'invoice', 'bill'], st: ['status', 'currentstatus', 'registerstatus'],
+  rack: ['rack', 'racklocation', 'location', 'shelf', 'rackno'], lit: ['lastissuedto', 'issuedto', 'borrower', 'member'],
+  lid: ['lastissuedate', 'issuedate', 'dateofissue'], lrd: ['lastreturndate', 'returndate', 'dateofreturn']
+};
+function normStatus(v) {
+  const s = String(v || '').toLowerCase();
+  if (!s) return 'Available';
+  if (/issu|loan|circul/.test(s)) return 'Issued';
+  if (/withdr|written|discard|weed|condemn/.test(s)) return 'Withdrawn';
+  if (/transf/.test(s)) return 'Transferred';
+  if (/lost|missing/.test(s)) return 'Lost';
+  if (/repair|bind/.test(s)) return 'Under Repair';
+  return 'Available';
+}
+function normDateCell(v) {
+  if (v == null || v === '') return '';
+  if (typeof v === 'number' && v > 20000 && v < 80000) { const d = new Date(Math.round((v - 25569) * 86400000)); return d.toISOString().slice(0, 10); }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return m[0];
+  return s;
+}
+function rowsToRecords(aoa) {
+  if (!aoa.length) return { recs: [], skipped: 0, unmapped: [] };
+  const head = aoa[0].map(h => String(h || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+  const idx = {}; const unmapped = [];
+  head.forEach((h, i) => {
+    const k = Object.keys(HEADER_ALIASES).find(f => HEADER_ALIASES[f].includes(h));
+    if (k && idx[k] === undefined) idx[k] = i; else if (h) unmapped.push(aoa[0][i]);
+  });
+  if (idx.a === undefined) throw new Error('No accession number column found. Name a column "Accession No."');
+  const recs = []; let skipped = 0;
+  for (const row of aoa.slice(1)) {
+    const a = normAcc(row[idx.a]);
+    if (!a) { if (row.some(c => String(c ?? '').trim())) skipped++; continue; }
+    const r = { a };
+    for (const k of REG_F) if (k !== 'a' && idx[k] !== undefined) {
+      let v = row[idx[k]]; if (v == null) continue;
+      if (k === 'pd' || k === 'lid' || k === 'lrd') v = normDateCell(v);
+      else if (k === 'pr') { const n = parseFloat(String(v).replace(/[^0-9.]/g, '')); v = isNaN(n) ? '' : n; }
+      else v = String(v).trim().slice(0, 300);
+      if (v !== '') r[k] = v;
+    }
+    r.st = normStatus(r.st);
+    recs.push(r);
+  }
+  return { recs, skipped, unmapped };
+}
+function parseCSV(text) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(f); f = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += ch;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ''));
+}
+async function writeRegister(recs, source) {
+  const gen = 'g' + Date.now().toString(36);
+  const old = (S.regChunks || []).filter(d => d.data.gen !== gen).map(d => d.id);
+  let n = 0;
+  for (let i = 0; i < recs.length; i += 500) { await Store.set(`master/register/chunks/${gen}-${n}`, { gen, idx: n, rows: recs.slice(i, i + 500).map(recToArr) }); n++; }
+  await Store.set('master/register', { gen, count: recs.length, chunks: n, updatedAt: Date.now(), by: S.uid, source });
+  for (const id of old) await Store.del(`master/register/chunks/${id}`).catch(() => {});
+}
+
+/* ---------- sample register for trying the module ---------- */
+const SAMPLE_BOOKS = [
+  ['Godan', 'Premchand', 'Rajkamal Prakashan', 'Hindi Literature', 'General'],
+  ['Gitanjali', 'Rabindranath Tagore', 'Visva-Bharati', 'English Literature', 'General'],
+  ['Panchatantra Stories', 'Vishnu Sharma (retold)', "Children's Book Trust", "Children's Fiction", 'VI'],
+  ['The Story of My Experiments with Truth', 'M. K. Gandhi', 'Navajivan Publishing House', 'Biography', 'General'],
+  ['The Discovery of India', 'Jawaharlal Nehru', 'Oxford University Press', 'History', 'XI'],
+  ['Wings of Fire', 'A. P. J. Abdul Kalam', 'Universities Press', 'Biography', 'General'],
+  ['Mathematics Textbook for Class X', 'NCERT', 'NCERT', 'Mathematics', 'X'],
+  ['Science Textbook for Class IX', 'NCERT', 'NCERT', 'Science', 'IX'],
+  ['Physics Part I', 'NCERT', 'NCERT', 'Physics', 'XI'],
+  ['Chemistry Part II', 'NCERT', 'NCERT', 'Chemistry', 'XII'],
+  ['Biology', 'NCERT', 'NCERT', 'Biology', 'XII'],
+  ['India and the Contemporary World I', 'NCERT', 'NCERT', 'History', 'IX'],
+  ['Contemporary India II', 'NCERT', 'NCERT', 'Geography', 'X'],
+  ['Indian Economic Development', 'NCERT', 'NCERT', 'Economics', 'XI'],
+  ['Computer Science with Python', 'Sumita Arora', 'Dhanpat Rai & Co.', 'Computer Science', 'XII'],
+  ['Malgudi Days', 'R. K. Narayan', 'Indian Thought Publications', 'English Literature', 'General'],
+  ['Swami and Friends', 'R. K. Narayan', 'Indian Thought Publications', 'English Literature', 'VIII'],
+  ['Kamayani', 'Jaishankar Prasad', 'Lokbharti Prakashan', 'Hindi Literature', 'General'],
+  ['Rashmirathi', 'Ramdhari Singh Dinkar', 'Lokbharti Prakashan', 'Hindi Literature', 'General'],
+  ["Oxford Advanced Learner's Dictionary", 'A. S. Hornby', 'Oxford University Press', 'Reference', 'General'],
+  ['School Atlas', 'Survey of India', 'Orient BlackSwan', 'Geography', 'General'],
+  ['Sanskrit Vyakaran Pravesh', 'R. Tripathi', 'Chaukhamba Prakashan', 'Sanskrit', 'VIII'],
+  ['The Jungle Book', 'Rudyard Kipling', 'Rupa Publications', "Children's Fiction", 'VII'],
+  ['Treasure Island', 'R. L. Stevenson', 'Rupa Publications', "Children's Fiction", 'VII'],
+  ["Gulliver's Travels", 'Jonathan Swift', 'Penguin Books India', 'English Literature', 'VIII'],
+  ['Indian Polity', 'M. Laxmikanth', 'McGraw Hill Education', 'Political Science', 'XII'],
+  ['Democratic Politics II', 'NCERT', 'NCERT', 'Political Science', 'X'],
+  ['General Knowledge Digest', 'Editorial Board', 'Arihant Publications', 'General Knowledge', 'General'],
+  ['Hindi Vyakaran', 'Kamta Prasad Guru', 'Lokbharti Prakashan', 'Hindi Literature', 'IX'],
+  ['Ignited Minds', 'A. P. J. Abdul Kalam', 'Penguin Books India', 'Biography', 'General'],
+  ['The Book of Indian Birds', 'Salim Ali', 'Bombay Natural History Society', 'Science', 'General'],
+  ['Tales from Shakespeare', 'Charles and Mary Lamb', 'National Book Trust', 'English Literature', 'VIII'],
+  ['Accountancy Part I', 'NCERT', 'NCERT', 'Commerce', 'XI'],
+  ['Environmental Studies: Looking Around', 'NCERT', 'NCERT', 'Environmental Studies', 'V'],
+  ['Kabir ke Dohe', 'Kabir', 'Sahitya Akademi', 'Hindi Literature', 'General'],
+  ['Freedom Struggle', 'Bipan Chandra', 'National Book Trust', 'History', 'General']
+];
+const SUBJECT_RACK = {};
+function sampleRegister() {
+  let seed = 20262027; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const suppliers = ['Sharma Book Depot, Jaipur', 'Vidya Book House, Lucknow', 'National Book Agency, Delhi', 'Gyan Bharati Distributors, Bhopal'];
+  const borrowers = ['Aarav Sharma (IX-A)', 'Diya Verma (X-B)', 'Ishaan Kumar (XI-Sci)', 'Ananya Singh (VIII-C)', 'Kabir Yadav (XII-Com)', 'Meera Nair (VII-A)', 'Rohan Gupta (X-A)', 'Saanvi Patel (IX-C)', 'Vihaan Mishra (XI-Hum)', 'Tara Joshi (VI-B)', 'Mr. R. K. Tiwari (PGT Physics)', 'Mrs. S. Rao (TGT English)'];
+  const editions = ['1st', '2nd', '3rd', 'Reprint 2018', 'Reprint 2021', 'Revised 2023'];
+  const subjects = [...new Set(SAMPLE_BOOKS.map(b => b[3]))];
+  subjects.forEach((s, i) => SUBJECT_RACK[s] = 'R-' + String(i + 1).padStart(2, '0'));
+  const isbn = () => { const d = [9, 7, 8, 8, 1]; while (d.length < 12) d.push(Math.floor(rnd() * 10)); const sum = d.reduce((a, x, i) => a + x * (i % 2 ? 3 : 1), 0); d.push((10 - sum % 10) % 10); return d.join(''); };
+  const gaps = new Set([457, 458, 902]);
+  const recs = []; let batch = null;
+  const N = 1200;
+  for (let n = 1; n <= N; n++) {
+    if (gaps.has(n)) continue;
+    if (!batch || rnd() < 0.035) {
+      const frac = n / N; const y = 2011 + Math.floor(frac * 15); const mth = 1 + Math.floor(rnd() * 12);
+      batch = { pd: `${Math.min(y, 2026)}-${String(mth).padStart(2, '0')}-${String(1 + Math.floor(rnd() * 27)).padStart(2, '0')}`, sup: pick(suppliers), bill: `B/${Math.min(y, 2026)}/${100 + Math.floor(rnd() * 800)}` };
+    }
+    const b = pick(SAMPLE_BOOKS);
+    const ncert = b[2] === 'NCERT';
+    const r = {
+      a: String(n), t: b[0], au: b[1], p: b[2], ed: pick(editions), sub: b[3], cls: b[4],
+      pr: ncert ? 45 + Math.floor(rnd() * 12) * 10 : 150 + Math.floor(rnd() * 70) * 10,
+      pd: batch.pd, sup: batch.sup, bill: batch.bill, rack: SUBJECT_RACK[b[3]] + '/' + 'ABCDE'[Math.floor(rnd() * 5)], st: 'Available'
+    };
+    if (!ncert) r.isbn = isbn();
+    const x = rnd();
+    if (x < 0.055) { r.st = 'Issued'; r.lit = pick(borrowers); r.lid = `2026-${String(7 + Math.floor(rnd() * 3)).padStart(2, '0')}-${String(1 + Math.floor(rnd() * 27)).padStart(2, '0')}`; }
+    else if (x < 0.065) r.st = 'Withdrawn';
+    else if (x < 0.07) r.st = 'Transferred';
+    else if (x < 0.074) r.st = 'Under Repair';
+    else if (x < 0.076) r.st = 'Lost';
+    if (r.st === 'Available' && rnd() < 0.3) { r.lit = pick(borrowers); r.lid = `2025-${String(4 + Math.floor(rnd() * 8)).padStart(2, '0')}-1${Math.floor(rnd() * 9)}`; r.lrd = r.lid.slice(0, 8) + '2' + Math.floor(rnd() * 8); }
+    recs.push(r);
+  }
+  recs.push({ a: '615', t: 'Rashmirathi', au: 'Ramdhari Singh Dinkar', p: 'Lokbharti Prakashan', ed: '2nd', sub: 'Hindi Literature', cls: 'General', pr: 180, pd: '2019-07-11', sup: suppliers[0], bill: 'B/2019/412', rack: 'R-19/B', st: 'Available' });
+  return recs;
+}
+async function demoVerification() {
+  const m = model(); if (!m) return;
+  let seed = 4242; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const byBucket = {}; const now = Date.now(); let n = 0;
+  const put = (acc, e) => { (byBucket[bucketOf(acc)] ||= {})[keyOf(acc)] = { acc, at: now - Math.floor(rnd() * 5 * 86400000), firstAt: now, by: S.uid, method: 'scan', ...e }; n++; };
+  let foundIssued = false;
+  for (const r of m.rows) {
+    if (r.e) continue;
+    const rs = r.rec.st;
+    if (rs === 'Withdrawn' || rs === 'Transferred' || rs === 'Lost') continue;
+    if (rs === 'Issued') { if (!foundIssued && rnd() < 0.2) { foundIssued = true; put(r.acc, { status: ST.AV, condition: 'Good', foundRack: r.rec.rack, remarks: 'Found on shelf although issue register shows it issued.' }); } continue; }
+    const x = rnd();
+    if (x < 0.04) continue; // still pending
+    if (x < 0.065) put(r.acc, { status: ST.NF, condition: '', method: 'manual', remarks: 'Not located on the rack or adjoining racks.' });
+    else if (x < 0.075) put(r.acc, { status: ST.DA, condition: pick(['Termite Damaged', 'Binding Damaged', 'Pages Missing', 'Water Damaged']), foundRack: r.rec.rack, damage: { nature: 'Observed during verification', action: pick(['Repair', 'Rebind', 'Replace', 'Withdraw']) } });
+    else if (x < 0.09) put(r.acc, { status: ST.AV, condition: pick(['Poor', 'Pages Oxidised']), foundRack: r.rec.rack });
+    else if (x < 0.096) put(r.acc, { status: ST.AV, condition: 'Good', foundRack: 'R-' + String(1 + Math.floor(rnd() * 20)).padStart(2, '0') + '/A', remarks: 'Found shelved on the wrong rack.' });
+    else put(r.acc, { status: ST.AV, condition: rnd() < 0.8 ? 'Good' : 'Fair', foundRack: r.rec.rack });
+  }
+  function pick(a) { return a[Math.floor(rnd() * a.length)]; }
+  const k300 = (byBucket[bucketOf('300')] || {})[keyOf('300')];
+  if (k300) { k300.dupCopies = 1; k300.dupNote = 'A second physical copy also carries accession no. 300.'; }
+  put('UNLABELLED-1', { status: ST.EX, condition: 'Good', foundRack: 'R-03/A', extra: { t: 'Wings of Fire', au: 'A. P. J. Abdul Kalam', p: 'Universities Press', ed: 'Reprint 2021', pr: 350 }, remarks: 'Book carries no accession label.' });
+  put('1250', { status: ST.EX, condition: 'Fair', foundRack: 'R-07/C', extra: { t: 'Gitanjali', au: 'Rabindranath Tagore', p: 'Visva-Bharati', ed: '2nd', pr: 220 }, remarks: 'Accession label present but number not in register.' });
+  put('12O4', { status: ST.WA, condition: 'Good', foundRack: 'R-05/D', extra: { t: 'Malgudi Days', au: 'R. K. Narayan', p: 'Indian Thought Publications', note: 'Possibly 1204 (letter O written for zero)' }, remarks: 'Accession number appears mis-written.' });
+  try {
+    for (const [b, items] of Object.entries(byBucket)) await Store.merge(`${S.curBase}/buckets/${b}`, { items });
+    await logEvent({ action: 'Sample verification data generated', acc: '', prev: '', next: '', remarks: `${n} sample verification records created for trying the module.` });
+    if (m.s.status === 'Not Started') await updateSession({ status: 'In Progress' }, '', true);
+    toast(`${nf(n)} sample verification records added.`);
+  } catch (e) { toast(dbErr(e)); }
+}
+
+/* ============ rendering ============ */
+const NAV = [
+  ['dashboard', 'Dashboard'], ['sessions', 'Sessions'], ['scan', 'Scan & verify'], ['books', 'Book-by-book'],
+  ['reconcile', 'Reconciliation'], ['investigations', 'Missing books'], ['damaged', 'Damaged register'],
+  ['reports', 'Reports'], ['audit', 'Audit trail'], ['register', 'Stock register'], ['settings', 'Backup & settings']
+];
+const ICONS = {
+  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/></svg>',
+  books: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3" stroke-linecap="round"/></svg>',
+  reconcile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M5 7h14"/><path d="M5 7l-3 7a3 3 0 0 0 6 0L5 7zM19 7l-3 7a3 3 0 0 0 6 0l-3-7z"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>'
+};
+const main = () => $('#main');
+function render() {
+  const s = sess(); const m = model();
+  // keep focus & caret in inputs across re-renders
+  const ae = document.activeElement;
+  const keep = ae && ae.id && main().contains(ae) ? { id: ae.id, v: ae.value, a: ae.selectionStart, b: ae.selectionEnd } : null;
+  const counts = {
+    investigations: m ? m.c[ST.NF] + m.c[ST.MI] : 0,
+    damaged: m ? m.damaged.length : 0,
+    audit: S.corrections.filter(c => c.state === 'Pending').length,
+    register: S.regList.length
+  };
+  $('#side').innerHTML = `<div class="brand"><b>Stock Verification</b><span>Library physical verification</span></div>` +
+    NAV.map(([k, l], i) => (i === 4 || i === 7 || i === 10 ? '<div class="nav-sep"></div>' : '') +
+      `<button class="nav-btn" data-act="nav" data-v="${k}" ${S.view === k ? 'aria-current="page"' : ''}><span>${l}</span>${counts[k] ? `<span class="cnt">${nf(counts[k])}</span>` : ''}</button>`).join('') +
+    (S.installEvt ? '<div style="margin-top:auto;padding:12px 6px 0"><button class="btn primary" style="width:100%" data-act="install">Install app</button></div>' : '');
+  const bn = [['dashboard', 'Dashboard'], ['scan', 'Scan'], ['books', 'Books'], ['reconcile', 'Reconcile']];
+  const inMore = !bn.some(b => b[0] === S.view);
+  $('#bottomnav').innerHTML = bn.map(([k, l]) => `<button data-act="nav" data-v="${k}" ${S.view === k ? 'aria-current="page"' : ''}>${ICONS[k]}<span>${l}</span></button>`).join('') +
+    `<button data-act="more" ${inMore ? 'aria-current="page"' : ''}>${ICONS.more}<span>More</span></button>`;
+  const role = S.mode === 'local' ? `${S.uid || 'Set your name'}, ${S.isAdmin ? 'officer' : 'verifier'}` : !S.canWrite ? 'View only' : S.isAdmin ? 'Authorized officer' : 'Verifier';
+  $('#topbar').innerHTML = `<span class="mob-title">Stock Verification</span>
+    <div class="sess-pick">${S.sessions.length ? `<label class="sr" for="sess-sel">Verification session</label>
+      <select id="sess-sel" data-chg="session">${S.sessions.map(x => `<option value="${esc(x.id)}" ${x.id === S.sid ? 'selected' : ''}>${esc(x.vid || '')} ${esc(x.title || 'Untitled verification')}</option>`).join('')}</select>${s ? sbadge(s.status) : ''}` : '<span class="muted small">No verification session yet</span>'}</div>
+    <button class="role" data-act="operator" title="Who is using the app, and officer access" style="background:none;cursor:pointer">${esc(role)}${S.mode === 'local' && S.sec && S.sec.pinHash ? (S.isAdmin ? ' 🔓' : ' 🔒') : ''}</button>`;
+  let ban = '';
+  if (S.updateReady) ban += `<div class="banner local">A new version of the app is ready. <button class="btn sm" data-act="reload-app">Update now</button></div>`;
+  if (S.mode === 'local' && S.sessions.length) {
+    const lb = uiGet('lastBackup', 0);
+    if (!lb || Date.now() - lb > 7 * 86400000) ban += `<div class="banner local">${lb ? 'Last backup ' + fmtDate(lb) + '.' : 'No backup yet.'} Records are stored only on this device; download a backup regularly so they are safe if browser data is cleared. <button class="btn sm" data-act="backup">Download backup</button></div>`;
+  }
+  if (s && isLocked(s)) ban += `<div class="banner lock">${s.status === 'Approved' ? `Approved and locked on ${fmtDate(s.approvedAt || s.lockedAt)}.` : `Submitted on ${fmtDate(s.submittedAt)} and awaiting approval.`} ${S.isAdmin ? 'Changes you make are recorded as authorized corrections.' : 'Records can only be changed through an approved correction request.'}</div>`;
+  if (S.lockWarn) ban += `<div class="banner lock">The locked copy of this verification could not be read; showing the working copy.</div>`;
+  $('#banners').innerHTML = ban;
+  const fn = VIEWS[S.view] || VIEWS.dashboard;
+  main().innerHTML = (!S.loadedReg || !S.loadedSess) ? '<div class="empty"><h2>Opening the verification register…</h2></div>' : fn(s, m);
+  if (keep) {
+    const el = document.getElementById(keep.id);
+    if (el && el.tagName !== 'SELECT' && el.type !== 'file') {
+      el.value = keep.v; el.focus();
+      try { el.setSelectionRange(keep.a, keep.b); } catch (e) { }
+    } else if (el) el.focus();
+  }
+  hydrateThumbs(main());
+  if (S.view === 'settings') settingsStatus();
+}
+
+function noSession() {
+  if (!S.regList.length) return onboarding();
+  return `<div class="empty"><h2>Start a verification session</h2>
+    <p>The stock register holds ${nf(S.regList.length)} accession records. Create a session to begin checking them against the shelves.</p>
+    ${S.canWrite ? `<p style="margin-top:14px"><button class="btn primary" data-act="new-session">Create verification</button></p>` : ''}</div>`;
+}
+function onboarding() {
+  return `<div class="empty"><h2>Load the stock register first</h2>
+    <p>Verification compares every accession number in the stock register with what is on the shelves. Import the register from Excel or CSV to begin.</p>
+    <div class="row" style="justify-content:center;margin-top:14px">
+      ${S.isAdmin ? `<button class="btn primary" data-act="nav" data-v="register">Import stock register</button>
+      <button class="btn" data-act="load-sample">Try with a sample register</button>` : '<p class="muted">An authorized officer needs to import the stock register.</p>'}
+    </div></div>`;
+}
+
+const VIEWS = {};
+
+/* ---------- dashboard ---------- */
+VIEWS.dashboard = (s, m) => {
+  if (!s || !m) return noSession();
+  const cells = [
+    ['Books in stock register', m.total, '', 'all', `Acc. ${esc(s.rangeStart || '…')} to ${esc(s.rangeEnd || '…')}`],
+    ['Physically verified', m.phys, 'green', 'verified', pct(m.phys, m.total) + ' seen on shelves'],
+    ['Available', m.c[ST.AV], 'green', ST.AV, ''],
+    ['Issued', m.c[ST.IS], 'blue', ST.IS, 'as per issue register'],
+    ['Not found', m.c[ST.NF], 'amber', ST.NF, 'still being searched'],
+    ['Missing / lost', m.c[ST.MI], 'red', ST.MI, m.value ? inr(m.value) + ' with not found' : ''],
+    ['Damaged', m.c[ST.DA], 'violet', ST.DA, ''],
+    ['Under repair', m.c[ST.UR], 'violet', ST.UR, ''],
+    ['Withdrawn', m.c[ST.WD], '', ST.WD, m.c[ST.TR] ? `${nf(m.c[ST.TR])} transferred` : ''],
+    ['Extra / unrecorded', m.exCount, 'blue', 'extra', 'found but not in register'],
+    ['Pending verification', m.pending, m.pending ? 'amber' : 'green', 'pending', ''],
+    ['Verification', m.pctAcc.toFixed(1) + '%', 'green', 'verified', 'accounted for']
+  ];
+  const si = SESSION_STATES.indexOf(s.status);
+  return `<section class="hero">
+    <div>
+      <p class="vid">${esc(s.vid || '')}${s.date ? ', verified from ' + fmtDate(s.date) : ''}</p>
+      <h1>${esc(s.title || 'Physical verification')}</h1>
+      <p class="muted">${esc([s.school, s.library].filter(Boolean).join(', '))}</p>
+      <p class="muted small">Verification officer: ${esc(s.officer || '—')}${(s.committee || []).length ? `. Committee: ${esc(s.committee.join(', '))}` : ''}</p>
+    </div>
+    <div>
+      <div class="pct">${m.pctAcc.toFixed(1)}<small>%</small></div>
+      <div class="bar" role="img" aria-label="${m.pctAcc.toFixed(1)} percent accounted for"><i class="b-phys" style="width:${m.pctPhys}%"></i><i class="b-acc" style="width:${Math.max(0, m.pctAcc - m.pctPhys)}%"></i></div>
+      <div class="legend"><span><i style="background:var(--green)"></i>Physically verified ${nf(m.phys)}</span><span><i style="background:color-mix(in srgb,var(--green) 45%,var(--paper))"></i>Otherwise accounted ${nf(m.accounted - m.phys)}</span><span><i style="background:var(--grey-wash);outline:1px solid var(--rule-2)"></i>Pending ${nf(m.pending)}</span></div>
+      <p class="small muted">${nf(m.accounted)} of ${nf(m.total)} register entries accounted for.</p>
+    </div>
+  </section>
+  <ol class="states" aria-label="Verification status">${SESSION_STATES.map((st, i) => `<li class="${i < si ? 'done' : i === si ? 'now' : ''}"><b>${i + 1}</b>${st}</li>`).join('')}</ol>
+  <div class="ledger">${cells.map(([l, v, k, f, sub]) => `<button class="cell ${k ? 'k-' + k : ''}" data-act="goto-books" data-f="${esc(f)}"><span class="v">${typeof v === 'number' ? nf(v) : v}</span><span class="l">${l}</span>${sub ? `<span class="s">${sub}</span>` : ''}</button>`).join('')}</div>
+  <div class="row" style="margin-top:18px">
+    ${canWork() ? '<button class="btn primary" data-act="nav" data-v="scan">Scan books</button>' : ''}
+    <button class="btn" data-act="nav" data-v="reconcile">Reconcile with register</button>
+    <button class="btn" data-act="final-preview">Final verification report</button>
+  </div>
+  ${m.regDups.length || m.gapCount || m.circMismatch.length || m.locMismatch.length ? `<div class="section"><h3>Needs attention</h3>
+    ${m.regDups.length ? `<p>${nf(m.regDups.length)} accession number${m.regDups.length > 1 ? 's are' : ' is'} entered more than once in the stock register.</p>` : ''}
+    ${m.gapCount ? `<p>${nf(m.gapCount)} accession number${m.gapCount > 1 ? 's are' : ' is'} missing from the register sequence.</p>` : ''}
+    ${m.circMismatch.length ? `<p>${nf(m.circMismatch.length)} book${m.circMismatch.length > 1 ? 's were' : ' was'} found on the shelves although the issue register shows ${m.circMismatch.length > 1 ? 'them' : 'it'} issued.</p>` : ''}
+    ${m.locMismatch.length ? `<p>${nf(m.locMismatch.length)} book${m.locMismatch.length > 1 ? 's were' : ' was'} found on a different rack from the register.</p>` : ''}
+    <button class="btn sm" data-act="nav" data-v="reconcile">Review discrepancies</button></div>` : ''}`;
+};
+
+/* ---------- sessions ---------- */
+VIEWS.sessions = (s) => {
+  const list = S.sessions;
+  return `<div class="spread"><div><h1>Verification sessions</h1><p class="muted">Every session is kept permanently. Approved sessions are locked.</p></div>
+    ${S.canWrite ? '<button class="btn primary" data-act="new-session">New verification</button>' : ''}</div>
+    ${!list.length ? `<div class="section">${S.regList.length ? '<p>No sessions yet. Create one to begin.</p>' : onboarding()}</div>` :
+    `<div class="tblwrap"><table class="tbl"><thead><tr><th>Verification ID</th><th>Session</th><th>Date</th><th>Range</th><th>Status</th><th class="r">Accounted</th><th></th></tr></thead><tbody>
+    ${list.map(x => `<tr class="click" data-act="open-session" data-id="${esc(x.id)}"><td class="acc">${esc(x.vid || '')}</td><td class="t">${esc(x.title || '')}<span class="sub">${esc(x.period || '')}</span></td>
+      <td>${fmtDate(x.date)}</td><td class="num">${esc(x.rangeStart || '…')} to ${esc(x.rangeEnd || '…')}</td><td>${sbadge(x.status)}</td>
+      <td class="r num">${x.id === S.sid && model() ? model().pctAcc.toFixed(1) + '%' : x.summary ? x.summary.pct + '%' : '—'}</td>
+      <td>${x.id === S.sid ? '<span class="badge t-grey">Open</span>' : ''}</td></tr>`).join('')}
+    </tbody></table></div>`}
+    ${s ? `<div class="section"><div class="spread"><h3>${esc(s.vid || '')} ${esc(s.title || '')}</h3>
+      ${(S.canWrite && (!isLocked(s) || S.isAdmin)) ? '<button class="btn sm" data-act="edit-session">Edit details</button>' : ''}</div>
+      <dl class="kv">
+        ${[['Verification date', fmtDate(s.date)], ['Period / session', s.period], ['School', s.school], ['Library', s.library], ['Verification officer', s.officer],
+          ['Committee members', (s.committee || []).join(', ')], ['Stock register', s.regRange], ['Accession range', `${s.rangeStart || '…'} to ${s.rangeEnd || '…'}`],
+          ['Created', fmtDT(s.createdAt) + ' by ' + nameOf(s.createdBy)], ['Remarks', s.remarks]].map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v || '—')}</dd></div>`).join('')}
+      </dl>
+      ${S.isAdmin && !isLocked(s) && S.regMeta && S.regMeta.source === 'sample' ? `<div class="notice info">This session uses the sample register. <button class="btn sm" data-act="demo-verify">Fill with sample verification results</button></div>` : ''}
+    </div>` : ''}`;
+};
+
+/* ---------- scan & search ---------- */
+VIEWS.scan = (s, m) => {
+  if (!s || !m) return noSession();
+  const locked = !canWork();
+  const last = S.scan.last;
+  const mine = [...S.entries.values()].filter(e => e.by === S.uid && e.method !== 'bulk').sort((a, b) => b.at - a.at).slice(0, 12);
+  const tab = S.scan.tab;
+  return `<div class="spread"><div><h1>Scan &amp; verify</h1><p class="muted">${nf(m.pending)} of ${nf(m.total)} books still pending in accession ${esc(s.rangeStart || '…')} to ${esc(s.rangeEnd || '…')}.</p></div></div>
+  ${locked ? `<div class="notice">${esc(lockReason(s))} You can still look books up.</div>` : ''}
+  <div class="tabs" role="tablist"><button role="tab" aria-selected="${tab === 'scan'}" data-act="scan-tab" data-v="scan">Barcode / QR scan</button><button role="tab" aria-selected="${tab === 'search'}" data-act="scan-tab" data-v="search">Manual search</button></div>
+  ${tab === 'scan' ? `<div class="scanbox">
+    <label class="f" for="scan-in"><span>Scan the accession barcode or type the number, then press Enter</span></label>
+    <div class="scan-in" style="margin-top:6px"><input id="scan-in" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Accession number" data-key="scan">
+      <button class="btn primary" data-act="scan-go">Find</button></div>
+    <div class="row" style="margin-top:12px;justify-content:space-between">
+      <button class="btn" data-act="camera">Scan with camera</button>
+      ${locked ? '' : `<label class="switch"><input type="checkbox" data-chg="quick" ${S.scan.quick ? 'checked' : ''}> Quick mode: save new scans as available, good condition</label>`}
+    </div>
+    ${last ? `<div class="lastscan ${last.ok ? 't-green' : 't-amber'}"><span class="acc" style="font-size:1.2rem">${esc(last.acc)}</span><span>${esc(last.title || '')}</span>${badge(last.status)}<span class="small">${esc(last.msg || '')}</span>${last.ok && !locked ? `<button class="btn sm" data-act="open-book" data-acc="${esc(last.acc)}">Change</button>` : ''}</div>` : ''}
+  </div>
+  ${mine.length ? `<h3 style="margin-top:20px">Your recent verifications</h3><div class="tblwrap"><table class="tbl"><thead><tr><th>Acc. No.</th><th>Title</th><th>Status</th><th>Condition</th><th>Time</th></tr></thead><tbody>
+    ${mine.map(e => { const r = regRec(e.acc) || e.extra || {}; return `<tr class="click" data-act="open-book" data-acc="${esc(e.acc)}"><td class="acc">${esc(e.acc)}</td><td class="t">${esc(r.t || '')}</td><td>${badge(e.status)}</td><td>${esc(e.condition || '')}</td><td class="small muted">${fmtDT(e.at)}</td></tr>`; }).join('')}
+  </tbody></table></div>` : ''}` : searchPanel(s, m)}`;
+};
+function searchPanel(s, m) {
+  const f = S.scan.field, q = S.scan.q.trim().toLowerCase();
+  let res = [];
+  if (q) {
+    const pool = m.rows.concat(m.extras);
+    const get = { a: r => r.acc, t: r => r.rec.t, au: r => r.rec.au, isbn: r => r.rec.isbn, sub: r => r.rec.sub, cls: r => r.rec.cls, rack: r => r.rec.rack };
+    const g = get[f] || get.t;
+    res = pool.filter(r => String(g(r) || '').toLowerCase().includes(q));
+    if (f === 'a') res.sort((x, y) => (x.acc.toLowerCase() === q ? -1 : 0) - (y.acc.toLowerCase() === q ? -1 : 0) || cmpAcc(x.acc, y.acc));
+  }
+  return `<div class="scanbox"><div class="grid3">
+    <label class="f"><span>Search by</span><select data-chg="search-field">${[['a', 'Accession number'], ['t', 'Title'], ['au', 'Author'], ['isbn', 'ISBN'], ['sub', 'Subject'], ['cls', 'Class'], ['rack', 'Rack']].map(([k, l]) => `<option value="${k}" ${k === f ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    <label class="f" style="grid-column:span 2"><span>Search</span><input id="search-q" type="search" value="${esc(S.scan.q)}" data-in="search-q" placeholder="Type to search this session's books"></label>
+  </div></div>
+  ${q ? `<p class="small muted" style="margin-top:10px">${nf(res.length)} match${res.length === 1 ? '' : 'es'}${res.length > 60 ? ', showing the first 60' : ''}.</p>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Acc. No.</th><th>Title</th><th>Rack</th><th>Status</th><th></th></tr></thead><tbody>
+  ${res.slice(0, 60).map(r => `<tr><td class="acc">${esc(r.acc)}</td><td class="t">${esc(r.rec.t || '')}<span class="sub">${esc(r.rec.au || '')}</span></td><td>${esc(r.rec.rack || '')}</td><td>${badge(r.status)}</td>
+    <td><button class="btn sm ${r.status === ST.NV ? 'primary' : ''}" data-act="open-book" data-acc="${esc(r.acc)}" data-method="manual">${r.status === ST.NV && canWork() ? 'Verify' : 'Open'}</button></td></tr>`).join('')}
+  </tbody></table></div>` : ''}`;
+}
+
+/* ---------- book-by-book ---------- */
+const BOOK_FILTERS = [
+  ['all', 'All'], ['verified', 'Verified'], ['pending', 'Not verified'], [ST.MI, 'Missing'], [ST.NF, 'Not found'], ['damaged', 'Damaged'],
+  [ST.IS, 'Issued'], [ST.WD, 'Withdrawn'], [ST.TR, 'Transferred'], [ST.UR, 'Under repair'], ['extra', 'Extra books'], ['flags', 'Discrepancies']
+];
+function filterRows(m, f) {
+  const all = m.rows;
+  switch (f) {
+    case 'all': return all.concat(m.extras);
+    case 'verified': return all.filter(r => r.status !== ST.NV);
+    case 'pending': return all.filter(r => r.status === ST.NV);
+    case 'damaged': return m.damaged;
+    case 'extra': return m.extras;
+    case 'flags': {
+      const set = new Set([...m.locMismatch, ...m.circMismatch, ...m.dupCopies].map(r => r.acc));
+      return all.filter(r => set.has(r.acc) || r.status === ST.DU || r.status === ST.WA || m.regDups.some(d => d.a === r.acc)).concat(m.extras.filter(r => r.status === ST.WA));
+    }
+    case ST.AV: return all.filter(r => r.status === ST.AV);
+    default: return all.concat(m.extras).filter(r => r.status === f);
+  }
+}
+VIEWS.books = (s, m) => {
+  if (!s || !m) return noSession();
+  const B = S.books; const q = B.q.trim().toLowerCase();
+  let rows = filterRows(m, B.filter);
+  if (q) rows = rows.filter(r => [r.acc, r.rec.t, r.rec.au, r.rec.p, r.rec.rack, r.rec.isbn].some(v => String(v || '').toLowerCase().includes(q)));
+  const per = 50, pages = Math.max(1, Math.ceil(rows.length / per)); B.page = Math.min(B.page, pages - 1);
+  const shown = rows.slice(B.page * per, B.page * per + per);
+  const cnt = f => filterRows(m, f).length;
+  return `<div class="spread"><div><h1>Book-by-book verification</h1><p class="muted">Every accession number in the range, traced from the stock register to its physical status.</p></div>
+    <input id="books-q" type="search" style="max-width:320px" placeholder="Search accession, title, author, rack" value="${esc(B.q)}" data-in="books-q"></div>
+  <div class="chips" role="group" aria-label="Filter">${BOOK_FILTERS.map(([k, l]) => `<button class="chip" data-act="books-filter" data-f="${esc(k)}" aria-pressed="${B.filter === k}">${l}<span class="n">${nf(cnt(k))}</span></button>`).join('')}</div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Accession No.</th><th>Title</th><th>Author</th><th>Publisher</th><th>Book status</th><th>Physical status</th><th>Condition</th><th>Location</th><th>Remarks</th></tr></thead><tbody>
+  ${shown.length ? shown.map(r => {
+    const loc = r.e && r.e.foundRack ? r.e.foundRack : r.rec.rack;
+    const moved = r.e && r.e.foundRack && r.rec.rack && normLoc(r.e.foundRack) !== normLoc(r.rec.rack);
+    return `<tr class="click" data-act="open-book" data-acc="${esc(r.acc)}"><td class="acc">${esc(r.acc)}</td><td class="t">${esc(r.rec.t || '—')}</td><td>${esc(r.rec.au || '')}</td><td>${esc(r.rec.p || '')}</td>
+    <td>${r.extra ? '<span class="badge t-blue-o">Not in register</span>' : esc(r.rec.st || 'Available')}</td><td>${badge(r.status)}${r.e && r.e.dupCopies ? ' <span class="badge t-red-o">+' + r.e.dupCopies + ' copy</span>' : ''}</td>
+    <td>${esc(r.e && r.e.condition || '')}</td><td>${esc(loc || '')}${moved ? `<span class="sub">Register: ${esc(r.rec.rack)}</span>` : ''}</td><td class="small">${esc((r.e && r.e.remarks) || '')}</td></tr>`;
+  }).join('') : `<tr><td colspan="9" class="muted" style="text-align:center;padding:26px">No books match this filter.</td></tr>`}
+  </tbody></table></div>
+  <div class="pager"><span>${rows.length ? `${nf(B.page * per + 1)} to ${nf(Math.min(rows.length, B.page * per + per))} of ${nf(rows.length)}` : ''}</span>
+    <span class="row"><button class="btn sm" data-act="books-page" data-d="-1" ${B.page === 0 ? 'disabled' : ''}>Previous</button><button class="btn sm" data-act="books-page" data-d="1" ${B.page >= pages - 1 ? 'disabled' : ''}>Next</button></span></div>`;
+};
+
+/* ---------- reconciliation ---------- */
+function summaryRows(m) {
+  return [
+    ['Total books as per stock register', m.total, true],
+    ['Total books verified (accounted for)', m.accounted, true],
+    ['Physically verified on shelves', m.phys, true],
+    ['Physically available', m.c[ST.AV], true],
+    ['Issued (as per issue register)', m.c[ST.IS], true],
+    ['Not found', m.c[ST.NF], true],
+    ['Missing / lost', m.c[ST.MI], true],
+    ['Damaged', m.c[ST.DA], true],
+    ['Under repair', m.c[ST.UR], true],
+    ['Withdrawn', m.c[ST.WD], true],
+    ['Transferred to another library', m.c[ST.TR], true],
+    ['Duplicate accession (status)', m.c[ST.DU], true],
+    ['Wrong accession number', m.c[ST.WA] + m.waExtra, false],
+    ['Pending verification', m.pending, true],
+    ['Extra / unrecorded books found', m.exCount, false]
+  ];
+}
+function discList(title, sub, rows, cols, count) {
+  return `<details class="disc"><summary><span><b>${title}</b><span class="sub muted small" style="display:block">${sub}</span></span><span class="n">${nf(count ?? rows.length)}</span></summary>
+    <div class="inner">${rows.length ? `<div class="tblwrap"><table class="tbl"><thead><tr>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>
+    ${rows.slice(0, 300).map(r => `<tr ${r.acc ? `class="click" data-act="open-book" data-acc="${esc(r.acc)}"` : ''}>${cols.map(c => `<td>${c[1](r)}</td>`).join('')}</tr>`).join('')}
+    </tbody></table></div>${rows.length > 300 ? `<p class="small muted">Showing 300 of ${nf(rows.length)}. Export the discrepancy report for the full list.</p>` : ''}` : '<p class="muted small">None.</p>'}</div></details>`;
+}
+VIEWS.reconcile = (s, m) => {
+  if (!s || !m) return noSession();
+  const A = r => `<span class="acc">${esc(r.acc)}</span>`, T = r => esc(r.rec.t || '—');
+  const notFound = m.rows.filter(r => r.status === ST.NF || r.status === ST.MI || r.status === ST.NV);
+  const dupRows = [
+    ...m.regDups.map(d => ({ acc: d.a, rec: d.recs[0], detail: `Entered ${d.recs.length} times in the stock register: ${d.recs.map(x => x.t).join(' / ')}` })),
+    ...m.dupCopies.map(r => ({ ...r, detail: `${r.e.dupCopies + 1} physical copies carry this number. ${r.e.dupNote || ''}` })),
+    ...m.rows.filter(r => r.status === ST.DU).map(r => ({ ...r, detail: r.e.remarks || 'Marked duplicate during verification' }))
+  ];
+  const gapRows = m.gaps.map(g => ({ acc: '', rec: {}, range: g[0] === g[1] ? String(g[0]) : `${g[0]} to ${g[1]}`, n: g[1] - g[0] + 1 }));
+  const flow = ['Create session', 'Select stock range', 'Scan / search', 'Physical verification', 'Record condition', 'Reconcile', 'Identify discrepancies', 'Prepare summary', 'Review', 'Submit', 'Final report', 'Lock record'];
+  const stage = s.status === 'Approved' ? 12 : s.status === 'Submitted' ? 10 : s.status === 'Completed' ? 8 : s.status === 'In Progress' ? (m.pending ? 4 : 7) : 2;
+  return `<div class="spread"><div><h1>Reconciliation</h1><p class="muted">Stock register quantity compared with physically verified quantity.</p></div>
+    <div class="row"><button class="btn" data-act="export" data-r="discrepancy" data-fmt="xlsx">Export discrepancies</button></div></div>
+  <ol class="flow">${flow.map((f, i) => `<li class="${i + 1 < stage ? 'done' : i + 1 === stage ? 'now' : ''}">${f}</li>`).join('')}</ol>
+  <div class="section"><h2>Reconciliation summary</h2>
+    <div class="tblwrap"><table class="tbl"><thead><tr><th>Particulars</th><th class="r">Books</th><th class="r">% of register</th></tr></thead><tbody>
+    ${summaryRows(m).map(([l, v, p]) => `<tr><td>${l}</td><td class="r num">${nf(v)}</td><td class="r num">${p ? pct(v, m.total) : '—'}</td></tr>`).join('')}
+    <tr><td><b>Unaccounted difference</b> <span class="sub">Register total less found, issued, withdrawn and transferred</span></td><td class="r num"><b>${nf(m.total - m.phys - m.c[ST.IS] - m.c[ST.WD] - m.c[ST.TR])}</b></td><td class="r num">${pct(m.total - m.phys - m.c[ST.IS] - m.c[ST.WD] - m.c[ST.TR], m.total)}</td></tr>
+    <tr><td>Value of books not found or missing</td><td class="r num">${inr(m.value) || '₹0'}</td><td></td></tr>
+    </tbody></table></div>
+  </div>
+  <h2 style="margin-top:22px">Discrepancies</h2>
+  ${discList('In register but not physically found', 'Not found, missing, or not yet verified', notFound, [['Acc. No.', A], ['Title', T], ['Rack', r => esc(r.rec.rack || '')], ['Status', r => badge(r.status)]])}
+  ${discList('Physically found but absent from register', 'Extra or unrecorded books, and labels with wrong numbers', m.extras, [['Label', A], ['Title', T], ['Found at', r => esc(r.e.foundRack || '')], ['Status', r => badge(r.status)], ['Remarks', r => esc(r.e.remarks || r.rec.note || '')]])}
+  ${discList('Duplicate accession numbers', 'In the register, or found on more than one physical copy', dupRows, [['Acc. No.', A], ['Title', T], ['Detail', r => esc(r.detail)]])}
+  ${discList('Missing accession numbers', 'Numbers absent from the register sequence', gapRows, [['Accession numbers', r => `<span class="acc">${esc(r.range)}</span>`], ['Count', r => nf(r.n)]], m.gapCount)}
+  ${discList('Recorded as issued', 'Accounted for through the issue register', m.rows.filter(r => r.status === ST.IS), [['Acc. No.', A], ['Title', T], ['Issued to', r => esc(r.rec.lit || '')], ['Issue date', r => fmtDate(r.rec.lid)]])}
+  ${discList('Found on shelf but shown as issued', 'Issue register needs correcting', m.circMismatch, [['Acc. No.', A], ['Title', T], ['Register says issued to', r => esc(r.rec.lit || '')], ['Found at', r => esc(r.e.foundRack || '')]])}
+  ${discList('Damaged', 'Damaged, under repair, or in poor condition', m.damaged, [['Acc. No.', A], ['Title', T], ['Condition', r => esc(r.e && r.e.condition || '')], ['Status', r => badge(r.status)]])}
+  ${discList('Withdrawn', 'Withdrawn from stock', m.rows.filter(r => r.status === ST.WD), [['Acc. No.', A], ['Title', T], ['Remarks', r => esc(r.e && r.e.remarks || 'As per register')]])}
+  ${discList('Transferred to another library', 'As per register or verification', m.rows.filter(r => r.status === ST.TR), [['Acc. No.', A], ['Title', T], ['Remarks', r => esc(r.e && r.e.remarks || 'As per register')]])}
+  ${discList('Incorrect location', 'Found on a different rack from the register', m.locMismatch, [['Acc. No.', A], ['Title', T], ['Register rack', r => esc(r.rec.rack)], ['Found at', r => esc(r.e.foundRack)]])}
+  <div class="section"><h2>Review and submit</h2>${workflowPanel(s, m)}</div>`;
+};
+function workflowPanel(s, m) {
+  const parts = [];
+  if (s.status === 'Not Started' || s.status === 'In Progress') {
+    if (m.pending && S.canWrite) parts.push(`<div class="notice">${nf(m.pending)} books have not been verified. Keep scanning, or once the search is complete, record the rest as Not Found so they enter the missing-book investigation.</div>
+      <button class="btn" data-act="bulk-nf">Mark ${nf(m.pending)} unverified books Not Found</button>`);
+    if (S.canWrite) parts.push(`<button class="btn primary" data-act="sess-complete" ${m.pending ? 'disabled' : ''}>Mark verification completed</button>`);
+  }
+  if (s.status === 'Completed') {
+    parts.push(`<p>Verification is complete. Review the summary, discrepancies and final remarks, then submit. After submission only an authorized officer can change records.</p>`);
+    if (S.canWrite) parts.push(`<div class="row"><button class="btn" data-act="sess-reopen">Reopen for scanning</button><button class="btn primary" data-act="sess-submit">Submit for approval</button></div>`);
+  }
+  if (s.status === 'Submitted') {
+    parts.push(`<p>Submitted on ${fmtDT(s.submittedAt)} by ${esc(nameOf(s.submittedBy))}.</p>`);
+    if (S.isAdmin) parts.push(`<div class="row"><button class="btn" data-act="sess-return">Return for correction</button><button class="btn primary" data-act="sess-approve">Approve and lock</button></div>`);
+    else parts.push('<p class="muted">Waiting for an authorized officer to approve.</p>');
+  }
+  if (s.status === 'Approved') parts.push(`<div class="notice ok">Approved on ${fmtDT(s.approvedAt)} by ${esc(nameOf(s.approvedBy))}. This verification is part of the permanent record. Corrections need an authorized officer and appear in the audit trail.</div>
+    <button class="btn primary" data-act="final-preview">Open final verification report</button>`);
+  return parts.join('<div style="height:10px"></div>');
+}
+
+/* ---------- missing book investigation ---------- */
+VIEWS.investigations = (s, m) => {
+  if (!s || !m) return noSession();
+  const all = m.rows.filter(r => r.status === ST.NF || r.status === ST.MI || (r.e && r.e.inv && r.e.inv.recovery === 'Recovered'));
+  const f = S.inv.filter;
+  const rows = all.filter(r => f === 'all' ? true : f === 'open' ? !(r.e && r.e.inv && ['Recovered', 'Written off'].includes(r.e.inv.recovery)) : f === 'nf' ? r.status === ST.NF : f === 'mi' ? r.status === ST.MI : r.e && r.e.inv && r.e.inv.recovery === 'Recovered');
+  return `<div class="spread"><div><h1>Missing book investigation</h1><p class="muted">One investigation record for every book not found. Responsibility is recorded only by an authorized officer.</p></div>
+    <button class="btn" data-act="export" data-r="missing" data-fmt="pdf">Missing book report</button></div>
+  <div class="chips">${[['open', 'Open'], ['nf', 'Not found'], ['mi', 'Missing'], ['rec', 'Recovered'], ['all', 'All']].map(([k, l]) => `<button class="chip" data-act="inv-filter" data-f="${k}" aria-pressed="${f === k}">${l}</button>`).join('')}</div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Acc. No.</th><th>Title</th><th class="r">Price</th><th>Last known location</th><th>Last issued to</th><th>Status</th><th>Recovery</th><th>Responsibility</th></tr></thead><tbody>
+  ${rows.length ? rows.map(r => { const iv = (r.e && r.e.inv) || {}; return `<tr class="click" data-act="open-inv" data-acc="${esc(r.acc)}"><td class="acc">${esc(r.acc)}</td><td class="t">${esc(r.rec.t)}<span class="sub">${esc(r.rec.au || '')}</span></td>
+    <td class="r num">${inr(r.rec.pr)}</td><td>${esc(iv.lastKnown || r.rec.rack || '')}</td><td>${esc(r.rec.lit || '—')}${r.rec.lid ? `<span class="sub">${fmtDate(r.rec.lid)}</span>` : ''}</td>
+    <td>${badge(r.status)}</td><td>${esc(iv.recovery || 'Under investigation')}</td><td class="small">${iv.responsibility ? esc(iv.responsibility) : '<span class="muted">Not determined</span>'}</td></tr>`; }).join('')
+    : `<tr><td colspan="8" class="muted" style="text-align:center;padding:26px">No books in this list.</td></tr>`}
+  </tbody></table></div>`;
+};
+
+/* ---------- damaged register ---------- */
+VIEWS.damaged = (s, m) => {
+  if (!s || !m) return noSession();
+  return `<div class="spread"><div><h1>Damaged book register</h1><p class="muted">Built automatically from books recorded as damaged, under repair, or in poor condition.</p></div>
+    <div class="row"><button class="btn" data-act="export" data-r="damaged" data-fmt="pdf">PDF</button><button class="btn" data-act="export" data-r="damaged" data-fmt="xlsx">Excel</button></div></div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Acc. No.</th><th>Title</th><th>Author</th><th class="r">Price</th><th>Purchase year</th><th>Condition</th><th>Nature of damage</th><th>Photograph</th><th>Recommended action</th><th>Remarks</th></tr></thead><tbody>
+  ${m.damaged.length ? m.damaged.map(r => { const e = r.e || {}; const d = e.damage || {}; const ph = (e.files || []).filter(x => x.kind === 'photo');
+    return `<tr class="click" data-act="open-book" data-acc="${esc(r.acc)}"><td class="acc">${esc(r.acc)}</td><td class="t">${esc(r.rec.t)}</td><td>${esc(r.rec.au || '')}</td><td class="r num">${inr(r.rec.pr)}</td>
+    <td>${esc(String(r.rec.pd || '').slice(0, 4))}</td><td>${esc(e.condition || (r.status === ST.UR ? 'Sent for repair' : ''))}</td><td>${esc(d.nature || '')}</td>
+    <td>${ph.length ? `<div class="thumbs" style="margin:0"><button tabindex="-1" style="width:44px;height:44px"><img data-file="${esc(ph[0].id)}" alt="Damage photograph"></button></div>` : '<span class="muted small">None</span>'}</td>
+    <td>${d.action ? `<span class="badge t-violet">${esc(d.action)}</span>` : '<span class="muted small">Not set</span>'}</td><td class="small">${esc(e.remarks || '')}</td></tr>`; }).join('')
+    : `<tr><td colspan="10" class="muted" style="text-align:center;padding:26px">No damaged books recorded.</td></tr>`}
+  </tbody></table></div>`;
+};
+
+/* ---------- reports ---------- */
+const REPORTS = [
+  ['summary', 'Verification summary', 'Counts and percentages for the whole range'],
+  ['complete', 'Complete verified stock', 'Every accession number with its verification status'],
+  ['missing', 'Missing book report', 'Missing books with investigation details'],
+  ['notfound', 'Not found report', 'Books not located during verification'],
+  ['damaged', 'Damaged book report', 'Condition, nature of damage and recommended action'],
+  ['issued', 'Issued book report', 'Books accounted for through the issue register'],
+  ['extra', 'Extra book report', 'Books found that are not in the stock register'],
+  ['discrepancy', 'Accession discrepancy report', 'Duplicates, gaps, wrong numbers, location and issue mismatches'],
+  ['audit', 'Audit trail', 'Every verification action with user and time']
+];
+VIEWS.reports = (s, m) => {
+  if (!s || !m) return noSession();
+  const fr = s.finalRemarks || {};
+  const editable = S.canWrite && (!isLocked(s) || S.isAdmin);
+  return `<div class="spread"><div><h1>Reports and export</h1><p class="muted">Download as PDF or Excel, or print on A4.</p></div></div>
+  <div class="section"><div class="spread"><div><h2>Final stock verification report</h2>
+    <p class="muted">Verification certificate, reconciliation summary, detailed exceptions, committee remarks and signatures.${s.status !== 'Approved' ? ' Marked as a draft until the session is approved.' : ''}</p></div>
+    <div class="row"><button class="btn" data-act="final-preview">Preview</button><button class="btn primary" data-act="export" data-r="final" data-fmt="pdf">PDF</button><button class="btn" data-act="export" data-r="final" data-fmt="xlsx">Excel</button><button class="btn" data-act="export" data-r="final" data-fmt="print">Print A4</button></div></div>
+  </div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Report</th><th class="r">Rows</th><th></th></tr></thead><tbody>
+  ${REPORTS.map(([k, t, d]) => { const n = k === 'summary' ? '' : nf(reportDef(k, m).rows.length); return `<tr><td><b>${t}</b><span class="sub">${d}</span></td><td class="r num">${n}</td>
+    <td><div class="row" style="justify-content:flex-end"><button class="btn sm" data-act="export" data-r="${k}" data-fmt="pdf">PDF</button><button class="btn sm" data-act="export" data-r="${k}" data-fmt="xlsx">Excel</button><button class="btn sm" data-act="export" data-r="${k}" data-fmt="print">Print</button></div></td></tr>`; }).join('')}
+  </tbody></table></div>
+  <div class="section"><h2>Final remarks of the verification committee</h2>
+    <p class="muted small">These appear in the final report above the signatures.</p>
+    <div class="grid2" style="margin-top:10px">
+      <label class="f"><span>Observations</span><textarea id="fr-obs" ${editable ? '' : 'disabled'} maxlength="3000">${esc(fr.observations || '')}</textarea></label>
+      <label class="f"><span>Recommendations</span><textarea id="fr-rec" ${editable ? '' : 'disabled'} maxlength="3000">${esc(fr.recommendations || '')}</textarea></label>
+    </div>
+    ${editable ? `<div class="row" style="margin-top:10px">${isLocked(s) ? '<input id="fr-reason" type="text" placeholder="Reason for changing remarks after submission" style="max-width:420px">' : ''}<button class="btn primary" data-act="save-remarks">Save remarks</button></div>` : ''}
+  </div>`;
+};
+
+/* ---------- audit trail ---------- */
+VIEWS.audit = (s, m) => {
+  if (!s) return noSession();
+  const q = S.aud.q.trim().toLowerCase();
+  const ev = q ? S.audit.filter(e => [e.acc, e.action, e.prev, e.next, e.remarks, nameOf(e.uid)].some(v => String(v || '').toLowerCase().includes(q))) : S.audit;
+  const pend = S.corrections.filter(c => c.state === 'Pending');
+  return `<div class="spread"><div><h1>Audit trail</h1><p class="muted">Every verification action is recorded here and cannot be edited.</p></div>
+    <div class="row"><button class="btn" data-act="export" data-r="audit" data-fmt="xlsx">Excel</button><button class="btn" data-act="export" data-r="audit" data-fmt="pdf">PDF</button></div></div>
+  ${S.corrections.length ? `<div class="section"><h2>Correction requests</h2>
+    <p class="muted small">Changes requested after submission. ${S.isAdmin ? 'Approving applies the change and records it as an authorized correction.' : 'An authorized officer decides each request.'}</p>
+    <div class="tblwrap"><table class="tbl"><thead><tr><th>Requested</th><th>Acc. No.</th><th>Proposed change</th><th>Reason</th><th>State</th><th></th></tr></thead><tbody>
+    ${S.corrections.map(c => `<tr><td class="small">${fmtDT(c.at)}<span class="sub">${esc(nameOf(c.by))}</span></td><td class="acc">${esc(c.acc)}</td>
+      <td class="small">${esc([c.proposed.status, c.proposed.condition, c.proposed.remarks].filter(Boolean).join('; '))}</td><td class="small">${esc(c.reason)}</td>
+      <td>${c.state === 'Pending' ? '<span class="badge t-amber">Pending</span>' : c.state === 'Approved' ? '<span class="badge t-green">Approved</span>' : '<span class="badge t-red">Rejected</span>'}${c.decidedAt ? `<span class="sub">${fmtDT(c.decidedAt)}, ${esc(nameOf(c.decidedBy))}</span>` : ''}</td>
+      <td>${c.state === 'Pending' && S.isAdmin ? `<div class="row"><button class="btn sm" data-act="corr-decide" data-id="${esc(c.id)}" data-ok="0">Reject</button><button class="btn sm primary" data-act="corr-decide" data-id="${esc(c.id)}" data-ok="1">Approve</button></div>` : ''}</td></tr>`).join('')}
+    </tbody></table></div></div>` : ''}
+  <div class="row" style="margin-top:16px"><input id="aud-q" type="search" style="max-width:340px" placeholder="Filter by accession, user, action" value="${esc(S.aud.q)}" data-in="aud-q"><span class="small muted">${nf(ev.length)} entries</span></div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Date and time</th><th>User</th><th>Acc. No.</th><th>Action</th><th>Previous status</th><th>New status</th><th>Remarks</th></tr></thead><tbody>
+  ${ev.length ? ev.slice(0, 400).map(e => `<tr><td class="small num">${fmtDT(e.t)}</td><td class="small">${esc(nameOf(e.uid))}</td><td class="acc">${esc(e.acc || '—')}</td>
+    <td>${esc(e.action)}${e.authorized ? ' <span class="badge t-violet">Authorized</span>' : ''}</td><td class="small">${esc(e.prev || '')}</td><td class="small">${esc(e.next || '')}</td><td class="small">${esc(e.remarks || '')}</td></tr>`).join('')
+    : `<tr><td colspan="7" class="muted" style="text-align:center;padding:26px">No actions recorded yet.</td></tr>`}
+  </tbody></table></div>${ev.length > 400 ? '<p class="small muted">Showing the latest 400. Export for the complete trail.</p>' : ''}`;
+};
+
+/* ---------- stock register ---------- */
+VIEWS.register = () => {
+  const R = S.reg; const q = R.q.trim().toLowerCase();
+  let rows = S.regList;
+  if (q) rows = rows.filter(r => [r.a, r.t, r.au, r.p, r.isbn, r.rack, r.sub].some(v => String(v || '').toLowerCase().includes(q)));
+  const per = 50, pages = Math.max(1, Math.ceil(rows.length / per)); R.page = Math.min(R.page, pages - 1);
+  const by = {}; S.regList.forEach(r => by[r.st || 'Available'] = (by[r.st || 'Available'] || 0) + 1);
+  const meta = S.regMeta;
+  return `<div class="spread"><div><h1>Stock register</h1><p class="muted">The accession register that every verification is checked against.</p></div>
+    ${S.isAdmin ? `<div class="row"><button class="btn" data-act="reg-template">Download template</button><button class="btn primary" data-act="reg-import">Import Excel or CSV</button></div>` : ''}</div>
+  ${meta ? `<div class="section"><dl class="kv" style="margin:0">
+    <div><dt>Accession records</dt><dd class="num">${nf(S.regList.length)}${S.regDups.length ? ` (plus ${nf(S.regDups.reduce((a, d) => a + d.recs.length - 1, 0))} duplicate entries)` : ''}</dd></div>
+    <div><dt>Last updated</dt><dd>${fmtDT(meta.updatedAt)} by ${esc(nameOf(meta.by))}${meta.source === 'sample' ? ' (sample data)' : ''}</dd></div>
+    <div class="span2"><dt>Register status</dt><dd>${Object.entries(by).map(([k, v]) => `${esc(k)} ${nf(v)}`).join(', ')}</dd></div>
+  </dl><p class="small muted" style="margin-top:8px">Approved verifications keep their own copy of the register, so re-importing never changes a locked record.</p></div>` : onboarding()}
+  ${S.regList.length ? `<div class="row" style="margin-top:16px"><input id="reg-q" type="search" style="max-width:340px" placeholder="Search the register" value="${esc(R.q)}" data-in="reg-q"></div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>Acc. No.</th><th>Title</th><th>Author</th><th>Publisher</th><th>Edition</th><th class="r">Price</th><th>Purchased</th><th>Supplier / Bill</th><th>Rack</th><th>Status</th></tr></thead><tbody>
+  ${rows.slice(R.page * per, R.page * per + per).map(r => `<tr><td class="acc">${esc(r.a)}</td><td class="t">${esc(r.t || '')}</td><td>${esc(r.au || '')}</td><td>${esc(r.p || '')}</td><td>${esc(r.ed || '')}</td><td class="r num">${inr(r.pr)}</td><td class="small">${fmtDate(r.pd)}</td><td class="small">${esc(r.sup || '')}<span class="sub">${esc(r.bill || '')}</span></td><td>${esc(r.rack || '')}</td><td class="small">${esc(r.st || '')}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="pager"><span>${rows.length ? `${nf(R.page * per + 1)} to ${nf(Math.min(rows.length, R.page * per + per))} of ${nf(rows.length)}` : 'No matches'}</span>
+  <span class="row"><button class="btn sm" data-act="reg-page" data-d="-1" ${R.page === 0 ? 'disabled' : ''}>Previous</button><button class="btn sm" data-act="reg-page" data-d="1" ${R.page >= pages - 1 ? 'disabled' : ''}>Next</button></span></div>` : ''}`;
+};
+
+/* ============ sheets (dialogs) ============ */
+function openSheet(html, opts = {}) {
+  const root = $('#sheet-root');
+  root.innerHTML = `<div class="overlay" data-act="sheet-bg"><div class="sheet ${opts.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(opts.label || 'Details')}">${html}</div></div>`;
+  S.sheetOpen = true;
+  const first = $('[autofocus]', root) || $('.sheet', root);
+  setTimeout(() => { try { first.focus(); } catch (e) { } }, 30);
+  hydrateThumbs(root);
+}
+function closeSheet() {
+  stopCamera();
+  $('#sheet-root').innerHTML = ''; S.sheetOpen = false; S.sheetCtx = null;
+  if (S.view === 'scan' && S.scan.tab === 'scan') setTimeout(() => { const i = $('#scan-in'); if (i) i.focus(); }, 30);
+}
+const head = (title, sub = '') => `<div class="sheet-head"><div><h2>${title}</h2>${sub ? `<p class="muted small">${sub}</p>` : ''}</div><button class="x" data-act="close" aria-label="Close">×</button></div>`;
+let _ask = null;
+function ask({ title, body = '', confirm = 'Confirm', danger = false, input = null }) {
+  return new Promise(res => {
+    _ask = res;
+    openSheet(`${head(esc(title))}<div>${body}</div>
+      ${input ? `<label class="f" style="margin-top:12px"><span>${esc(input.label)}</span><textarea id="ask-in" autofocus maxlength="600"></textarea></label>` : ''}
+      <div class="sheet-foot"><button class="btn" data-act="ask-no">Cancel</button><button class="btn ${danger ? 'danger' : 'primary'}" data-act="ask-yes" data-req="${input && input.required ? 1 : 0}">${esc(confirm)}</button></div>`, { label: title });
+  });
+}
+function finishAsk(val) { const r = _ask; _ask = null; closeSheet(); if (r) r(val); }
+
+function moreSheet() {
+  openSheet(head('More') + `<div style="display:grid;gap:4px">${NAV.filter(n => !['dashboard', 'scan', 'books', 'reconcile'].includes(n[0])).map(([k, l]) => `<button class="nav-btn" data-act="nav" data-v="${k}" ${S.view === k ? 'aria-current="page"' : ''}>${l}</button>`).join('')}</div>`, { label: 'More sections' });
+}
+
+/* ---------- session create / edit ---------- */
+function sessionSheet(edit) {
+  const s = edit ? sess() : null;
+  const prev = S.sessions[0] || {};
+  const y = new Date().getFullYear(); const ac = new Date().getMonth() >= 3 ? `${y}–${String(y + 1).slice(2)}` : `${y - 1}–${String(y).slice(2)}`;
+  const nums = S.regList.map(r => accNum(r.a)).filter(n => !isNaN(n));
+  const v = s || {
+    vid: `PSV-${y}-${String(S.sessions.filter(x => (x.vid || '').includes(String(y))).length + 1).padStart(2, '0')}`,
+    date: today(), period: `Academic Session ${ac}`, title: `Physical Verification – Academic Session ${ac}`,
+    school: prev.school || '', library: prev.library || '', officer: prev.officer || '', committee: prev.committee || [],
+    regRange: prev.regRange || '', rangeStart: nums.length ? Math.min(...nums) : '', rangeEnd: nums.length ? Math.max(...nums) : '', remarks: ''
+  };
+  const F = (id, label, val, attrs = '') => `<label class="f"><span>${label}</span><input id="${id}" type="text" value="${esc(val ?? '')}" ${attrs}></label>`;
+  openSheet(head(edit ? 'Edit verification details' : 'New verification session', 'Fields marked * are required.') + `
+    <div class="grid2">
+      ${F('s-vid', 'Verification ID *', v.vid, 'maxlength="40"')}
+      <label class="f"><span>Verification date *</span><input id="s-date" type="date" value="${esc(v.date || '')}"></label>
+      <div class="span2">${F('s-title', 'Title *', v.title, 'maxlength="140"')}</div>
+      ${F('s-period', 'Verification period / session', v.period, 'maxlength="80"')}
+      ${F('s-regrange', 'Stock register range', v.regRange, 'placeholder="e.g. Accession Register Vol. I to IV" maxlength="120"')}
+      ${F('s-school', 'School name *', v.school, 'maxlength="140"')}
+      ${F('s-library', 'Library name *', v.library, 'maxlength="140"')}
+      ${F('s-officer', 'Verification officer / librarian *', v.officer, 'maxlength="100"')}
+      <label class="f"><span>Committee members (one per line)</span><textarea id="s-committee" maxlength="800">${esc((v.committee || []).join('\n'))}</textarea></label>
+      <label class="f"><span>Starting accession number</span><input id="s-start" type="number" min="0" value="${esc(v.rangeStart ?? '')}" ${edit && s.status !== 'Not Started' && !S.isAdmin ? 'disabled' : ''}></label>
+      <label class="f"><span>Ending accession number</span><input id="s-end" type="number" min="0" value="${esc(v.rangeEnd ?? '')}" ${edit && s.status !== 'Not Started' && !S.isAdmin ? 'disabled' : ''}></label>
+      <label class="f span2"><span>Remarks</span><textarea id="s-remarks" maxlength="1000">${esc(v.remarks || '')}</textarea></label>
+      ${edit && isLocked(s) ? `<label class="f span2"><span>Reason for changing a locked session *</span><input id="s-reason" type="text" maxlength="300"></label>` : ''}
+    </div>
+    <p class="small muted">${S.regList.length ? `The register holds accession numbers ${nf(nums.length ? Math.min(...nums) : 0)} to ${nf(nums.length ? Math.max(...nums) : 0)}. Leave both range fields empty to verify the whole register.` : 'No stock register loaded yet.'}</p>
+    <div class="sheet-foot"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="session-save" data-edit="${edit ? 1 : 0}">${edit ? 'Save details' : 'Create verification'}</button></div>`, { label: 'Verification session' });
+}
+async function saveSessionForm(edit) {
+  const g = id => ($('#' + id) || {}).value?.trim() ?? '';
+  const d = {
+    vid: g('s-vid'), date: g('s-date'), title: g('s-title'), period: g('s-period'), regRange: g('s-regrange'), school: g('s-school'), library: g('s-library'),
+    officer: g('s-officer'), committee: g('s-committee').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 12), rangeStart: g('s-start'), rangeEnd: g('s-end'), remarks: g('s-remarks')
+  };
+  const miss = [['vid', 'Verification ID'], ['date', 'Verification date'], ['title', 'Title'], ['school', 'School name'], ['library', 'Library name'], ['officer', 'Verification officer']].filter(([k]) => !d[k]);
+  if (miss.length) return toast('Fill in: ' + miss.map(x => x[1]).join(', ') + '.');
+  if (d.rangeStart !== '' && d.rangeEnd !== '' && +d.rangeStart > +d.rangeEnd) return toast('The starting accession number must not be larger than the ending number.');
+  if (edit) {
+    const s = sess();
+    const reason = g('s-reason');
+    if (isLocked(s) && !reason) return toast('Enter the reason for changing a locked session.');
+    await updateSession({ ...d, _remarks: undefined }, 'Session details edited');
+    if (isLocked(s)) logEvent({ action: 'Session details corrected', acc: '', prev: '', next: '', remarks: reason, authorized: true });
+    closeSheet(); toast('Details saved.');
+    return;
+  }
+  const id = 's' + Date.now().toString(36);
+  const doc = { ...d, status: 'Not Started', createdAt: Date.now(), createdBy: S.uid, finalRemarks: { observations: '', recommendations: '' } };
+  try {
+    await Store.set(`sessions/${id}`, doc);
+    // prepare record buckets for the range so concurrent scanners share them
+    const s = { ...doc, id };
+    const buckets = new Set(S.regList.filter(r => inRange(s, r.a)).map(r => bucketOf(r.a)));
+    for (const b of buckets) await Store.set(`sessions/${id}/buckets/${b}`, { items: {} });
+    await logEvent({ action: 'Session created', acc: '', prev: '', next: 'Not Started', remarks: `${d.title}; accession ${d.rangeStart || '…'} to ${d.rangeEnd || '…'}` }, `sessions/${id}`);
+    S.sid = id; uiSet('sid', id); closeSheet(); toast('Verification session created.');
+    S.view = 'dashboard'; uiSet('view', 'dashboard');
+  } catch (e) { toast(dbErr(e)); }
+}
+
+/* ---------- book verification sheet ---------- */
+function optList(list, val) { return list.map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join(''); }
+function bookSheet(acc, ctx = {}) {
+  const s = sess(); if (!s) return;
+  const rec = regRec(acc); const e = S.entries.get(acc); const inR = rec && inRange(s, acc);
+  const cur = e ? e.status : rec ? eff(rec, null) : ST.NV;
+  const editable = canWork(); const locked = isLocked(s);
+  const correctionOnly = locked && !S.isAdmin && S.canWrite;
+  S.sheetCtx = { acc, method: ctx.method || 'manual', fromScan: !!ctx.fromScan };
+  const notices = [];
+  if (!rec) notices.push(`<div class="notice info">This number is not in the stock register. Record the book as extra/unrecorded, or as a wrong accession number if the label looks incorrect.</div>`);
+  else if (!inR) notices.push(`<div class="notice">Accession ${esc(acc)} is outside this session's range (${esc(s.rangeStart || '…')} to ${esc(s.rangeEnd || '…')}). It will be kept in this session's record, but it is not counted in the range totals.</div>`);
+  if (rec && rec.st === 'Issued' && (!e || ctx.fromScan)) notices.push(`<div class="notice info">The issue register shows this book issued to ${esc(rec.lit || 'a reader')}${rec.lid ? ' on ' + fmtDate(rec.lid) : ''}. If the book is in your hand it is physically available, and the issue record needs correcting.</div>`);
+  if (e && ctx.fromScan) notices.push(`<div class="notice">Already verified on ${fmtDT(e.at)} by ${esc(nameOf(e.by))} as ${esc(e.status)}. Save to update the record, or record this as a second physical copy with the same number.</div>`);
+  const st = e ? e.status : (rec ? (rec.st === 'Issued' && !ctx.fromScan ? ST.IS : ST.AV) : ST.EX);
+  const cond = e ? (e.condition || 'Good') : 'Good';
+  const rack = e ? (e.foundRack || '') : (rec ? rec.rack || '' : '');
+  const x = (e && e.extra) || {};
+  const d = (e && e.damage) || {};
+  const hist = S.audit.filter(a => a.acc === acc);
+  const files = (e && e.files) || [];
+  const showDamage = st === ST.DA || st === ST.UR || SEVERE.has(cond) || WORN.has(cond);
+  const showExtra = !rec || st === ST.EX || st === ST.WA;
+  const form = (editable || correctionOnly) ? `
+    <h3 style="margin-top:14px">${correctionOnly ? 'Request a correction' : 'Physical verification'}</h3>
+    <div class="grid2" style="margin-top:8px">
+      <label class="f"><span>Verification status</span><select id="f-status" data-chg="f-status">${optList(STATUS_LIST, st)}</select></label>
+      <label class="f"><span>Physical condition</span><select id="f-cond" data-chg="f-cond">${optList(['', ...CONDITIONS], cond)}</select></label>
+      <label class="f"><span>Found at rack / location</span><input id="f-rack" type="text" value="${esc(rack)}" maxlength="40"></label>
+      <label class="f"><span>Remarks</span><input id="f-remarks" type="text" value="${esc(e && e.remarks || '')}" maxlength="500"></label>
+    </div>
+    <div id="f-extra" class="grid3" style="margin-top:12px" ${showExtra ? '' : 'hidden'}>
+      <label class="f"><span>Title</span><input id="x-t" type="text" value="${esc(x.t || '')}" maxlength="200"></label>
+      <label class="f"><span>Author</span><input id="x-au" type="text" value="${esc(x.au || '')}" maxlength="120"></label>
+      <label class="f"><span>Publisher</span><input id="x-p" type="text" value="${esc(x.p || '')}" maxlength="120"></label>
+      <label class="f"><span>Edition</span><input id="x-ed" type="text" value="${esc(x.ed || '')}" maxlength="40"></label>
+      <label class="f"><span>Price</span><input id="x-pr" type="number" min="0" value="${esc(x.pr || '')}"></label>
+      <label class="f"><span>Note (possible correct number)</span><input id="x-note" type="text" value="${esc(x.note || '')}" maxlength="200"></label>
+    </div>
+    <div id="f-damage" class="grid2" style="margin-top:12px" ${showDamage ? '' : 'hidden'}>
+      <label class="f"><span>Nature of damage</span><input id="f-nature" type="text" value="${esc(d.nature || '')}" maxlength="200" placeholder="e.g. spine detached, pages 40–56 missing"></label>
+      <label class="f"><span>Recommended action</span><select id="f-action">${optList(['', ...ACTIONS], d.action || '')}</select></label>
+    </div>
+    ${correctionOnly ? '' : `<label class="f" style="margin-top:12px"><span>Photographs as evidence</span><input id="f-photos" type="file" accept="image/*" capture="environment" multiple></label>`}
+    ${files.length ? `<div class="thumbs">${files.map(f => `<button data-act="view-file" data-id="${esc(f.id)}" title="${esc(f.name)}">${(f.type || '').startsWith('image/') ? `<img data-file="${esc(f.id)}" alt="${esc(f.name)}">` : esc(f.name.slice(0, 18))}</button>`).join('')}</div>` : ''}
+    ${locked ? `<label class="f" style="margin-top:12px"><span>${correctionOnly ? 'Reason for the correction *' : 'Reason for this authorized correction *'}</span><input id="f-reason" type="text" maxlength="400"></label>` : ''}
+  ` : `<div class="notice">${esc(lockReason(s) || 'You cannot change this record.')}</div>`;
+  const kv = rec ? REG_F.filter(k => k !== 'a').map(k => [REG_LABEL[k], k === 'pr' ? inr(rec[k]) : /^(pd|lid|lrd)$/.test(k) ? fmtDate(rec[k]) : rec[k]]) : [];
+  openSheet(`<div class="sheet-head"><div class="row" style="align-items:flex-start;gap:14px">
+      <div class="stamp"><small>Accession No.</small><b>${esc(acc)}</b></div>
+      <div style="min-width:0"><h2>${esc((rec && rec.t) || x.t || 'Unrecorded book')}</h2><p class="muted small">${esc((rec && rec.au) || x.au || '')}</p><p>${!rec && !e ? '<span class="badge t-blue-o">Not in stock register</span>' : badge(cur)}${e && e.dupCopies ? ` <span class="badge t-red-o">${e.dupCopies + 1} copies with this number</span>` : ''}</p></div>
+    </div><button class="x" data-act="close" aria-label="Close">×</button></div>
+    ${notices.join('')}
+    ${rec ? `<dl class="kv">${kv.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v || '—')}</dd></div>`).join('')}</dl>` : ''}
+    ${form}
+    ${hist.length ? `<h3 style="margin-top:16px">Modification history</h3><ul class="hist">${hist.map(h => `<li><b>${esc(h.action)}</b>${h.authorized ? ' <span class="badge t-violet">Authorized</span>' : ''} <span class="muted">${fmtDT(h.t)}, ${esc(nameOf(h.uid))}</span><br>${esc(h.prev || '')} → ${esc(h.next || '')}${h.remarks ? `<span class="muted">. ${esc(h.remarks)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+    <div class="sheet-foot">
+      ${(cur === ST.NF || cur === ST.MI) ? `<button class="btn" data-act="open-inv" data-acc="${esc(acc)}">Investigation</button>` : ''}
+      ${editable && e && ctx.fromScan && rec ? `<button class="btn" data-act="book-dup" data-acc="${esc(acc)}">Record second copy</button>` : ''}
+      <button class="btn" data-act="close">${editable || correctionOnly ? 'Cancel' : 'Close'}</button>
+      ${editable ? `<button class="btn primary" data-act="book-save" data-acc="${esc(acc)}">${locked ? 'Save authorized correction' : 'Save verification'}</button>` : ''}
+      ${correctionOnly ? `<button class="btn primary" data-act="corr-send" data-acc="${esc(acc)}">Send correction request</button>` : ''}
+    </div>`, { label: 'Accession ' + acc });
+}
+function readBookForm() {
+  const g = id => { const el = $('#' + id); return el ? el.value.trim() : ''; };
+  const status = g('f-status'), condition = g('f-cond');
+  const patch = { status, condition, foundRack: g('f-rack'), remarks: g('f-remarks') };
+  if (!$('#f-extra').hidden) patch.extra = { t: g('x-t'), au: g('x-au'), p: g('x-p'), ed: g('x-ed'), pr: g('x-pr') ? +g('x-pr') : '', note: g('x-note') };
+  if (!$('#f-damage').hidden) patch.damage = { nature: g('f-nature'), action: g('f-action') };
+  return patch;
+}
+async function saveBookSheet(acc) {
+  const patch = readBookForm(); const ctx = S.sheetCtx || {};
+  const rec = regRec(acc);
+  if (!rec && patch.status !== ST.EX && patch.status !== ST.WA && patch.status !== ST.NV) return toast('A number that is not in the register can only be recorded as Extra/Unrecorded or Wrong Accession Number.');
+  if (!rec && !patch.extra?.t) return toast('Enter the title of the unrecorded book.');
+  if (patch.status === ST.NV && !S.entries.get(acc)) return closeSheet();
+  patch.method = ctx.method || 'manual';
+  const reason = $('#f-reason') ? $('#f-reason').value.trim() : '';
+  const fileInput = $('#f-photos');
+  const files = fileInput && fileInput.files ? [...fileInput.files].slice(0, 4) : [];
+  const btn = $('[data-act="book-save"]'); if (btn) btn.disabled = true;
+  if (files.length) {
+    const refs = await uploadFiles(acc, files, 'photo');
+    const prev = (S.entries.get(acc) || {}).files || [];
+    patch.files = prev.concat(refs);
+  }
+  const ok = await saveEntry(acc, patch, { reason, note: files.length ? `${files.length} photograph(s) attached` : '' });
+  if (btn) btn.disabled = false;
+  if (!ok) return;
+  const r = regRec(acc) || patch.extra || {};
+  S.scan.last = { acc, title: r.t, status: patch.status, ok: true, msg: ctx.fromScan ? 'Saved' : '' };
+  closeSheet(); toast(`Accession ${acc}: ${patch.status}.`);
+}
+
+/* ---------- investigation sheet ---------- */
+function invSheet(acc) {
+  const s = sess(); const rec = regRec(acc) || {}; const e = S.entries.get(acc) || {};
+  const iv = e.inv || {}; const status = e.status || eff(rec, null);
+  const editable = canWork(); const locked = isLocked(s);
+  const docs = (e.files || []).filter(f => f.kind === 'doc' || f.kind === 'photo');
+  const ro = editable ? '' : 'disabled';
+  openSheet(`<div class="sheet-head"><div class="row" style="align-items:flex-start;gap:14px"><div class="stamp"><small>Accession No.</small><b>${esc(acc)}</b></div>
+      <div><h2>Missing book investigation</h2><p class="muted small">${esc(rec.t || '')}, ${esc(rec.au || '')}</p><p>${badge(status)}</p></div></div><button class="x" data-act="close" aria-label="Close">×</button></div>
+    <dl class="kv">${[['Price', inr(rec.pr)], ['Rack as per register', rec.rack], ['Last issued to', rec.lit], ['Last issue date', fmtDate(rec.lid)], ['Last return date', fmtDate(rec.lrd)], ['Register status', rec.st]].map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v || '—')}</dd></div>`).join('')}</dl>
+    <div class="grid2">
+      <label class="f"><span>Last known location</span><input id="i-loc" type="text" value="${esc(iv.lastKnown || rec.rack || '')}" maxlength="100" ${ro}></label>
+      <label class="f"><span>Recovery status</span><select id="i-rec" ${ro}>${optList(RECOVERY, iv.recovery || 'Under investigation')}</select></label>
+      <label class="f span2"><span>Search conducted</span><textarea id="i-search" maxlength="600" ${ro} placeholder="Racks, reading room, classrooms, binder, staff room checked on…">${esc(iv.search || '')}</textarea></label>
+      <label class="f"><span>Explanation</span><textarea id="i-expl" maxlength="600" ${ro}>${esc(iv.explanation || '')}</textarea></label>
+      <label class="f"><span>Investigation remarks</span><textarea id="i-rem" maxlength="600" ${ro}>${esc(iv.remarks || '')}</textarea></label>
+      <label class="f span2"><span>Responsibility, if officially determined</span><textarea id="i-resp" maxlength="400" ${S.isAdmin && editable ? '' : 'disabled'} placeholder="${S.isAdmin ? 'Record only after official determination' : 'Only an authorized officer can record responsibility'}">${esc(iv.responsibility || '')}</textarea>
+        ${iv.respAt ? `<span class="small muted">Recorded by ${esc(nameOf(iv.respBy))} on ${fmtDT(iv.respAt)}</span>` : ''}</label>
+      ${editable ? `<label class="f span2"><span>Supporting documents (images, or PDFs up to 170 KB)</span><input id="i-docs" type="file" accept="image/*,application/pdf" multiple></label>` : ''}
+    </div>
+    ${docs.length ? `<div class="thumbs">${docs.map(f => `<button data-act="view-file" data-id="${esc(f.id)}" title="${esc(f.name)}">${(f.type || '').startsWith('image/') ? `<img data-file="${esc(f.id)}" alt="${esc(f.name)}">` : esc(f.name.slice(0, 18))}</button>`).join('')}</div>` : ''}
+    ${locked && editable ? `<label class="f" style="margin-top:12px"><span>Reason for this authorized correction *</span><input id="f-reason" type="text" maxlength="400"></label>` : ''}
+    <div class="sheet-foot">
+      <button class="btn" data-act="close">${editable ? 'Cancel' : 'Close'}</button>
+      ${editable && status === ST.NF ? `<button class="btn danger" data-act="inv-save" data-acc="${esc(acc)}" data-to="${esc(ST.MI)}">Declare missing</button>` : ''}
+      ${editable && (status === ST.NF || status === ST.MI) ? `<button class="btn" data-act="inv-save" data-acc="${esc(acc)}" data-to="${esc(ST.AV)}">Book recovered</button>` : ''}
+      ${editable ? `<button class="btn primary" data-act="inv-save" data-acc="${esc(acc)}">Save investigation</button>` : ''}
+    </div>`, { label: 'Investigation ' + acc });
+}
+async function saveInv(acc, to) {
+  const g = id => { const el = $('#' + id); return el ? el.value.trim() : ''; };
+  const prev = (S.entries.get(acc) || {}).inv || {};
+  const inv = { lastKnown: g('i-loc'), recovery: g('i-rec'), search: g('i-search'), explanation: g('i-expl'), remarks: g('i-rem') };
+  if (S.isAdmin) {
+    const resp = g('i-resp');
+    if (resp !== (prev.responsibility || '')) { inv.responsibility = resp; inv.respBy = S.uid; inv.respAt = Date.now(); }
+  }
+  const patch = { inv };
+  const rec = regRec(acc) || {};
+  const curStatus = (S.entries.get(acc) || {}).status || eff(rec, null);
+  let action = 'Investigation updated';
+  if (to === ST.MI) {
+    if (!inv.search) return toast('Record the search conducted before declaring the book missing.');
+    patch.status = ST.MI; action = 'Declared missing';
+    if (inv.recovery === 'Recovered') inv.recovery = 'Not recovered';
+  } else if (to === ST.AV) {
+    patch.status = ST.AV; patch.condition = (S.entries.get(acc) || {}).condition || 'Good'; inv.recovery = 'Recovered'; inv.recoveredAt = Date.now(); action = 'Book recovered';
+  } else patch.status = curStatus;
+  const fi = $('#i-docs');
+  const files = fi && fi.files ? [...fi.files].slice(0, 5) : [];
+  if (files.length) {
+    const refs = await uploadFiles(acc, files, 'doc');
+    patch.files = ((S.entries.get(acc) || {}).files || []).concat(refs);
+  }
+  const reason = $('#f-reason') ? $('#f-reason').value.trim() : '';
+  const note = [inv.search ? 'Search: ' + inv.search : '', inv.remarks || inv.explanation || '', inv.respAt ? 'Responsibility recorded by authorized officer: ' + inv.responsibility : ''].filter(Boolean).join(' | ');
+  const ok = await saveEntry(acc, patch, { action, reason, note });
+  if (ok) { closeSheet(); toast(action + '.'); }
+}
+async function viewFile(id) {
+  const f = await getFile(id).catch(() => null);
+  if (!f) return toast('That file could not be opened.');
+  if ((f.type || '').startsWith('image/')) {
+    const back = S.sheetCtx;
+    openSheet(head(esc(f.name), `Uploaded ${fmtDT(f.at)} by ${esc(nameOf(f.by))}`) + `<img src="${f.data}" alt="${esc(f.name)}" style="width:100%;border-radius:6px">
+      <div class="sheet-foot"><button class="btn" data-act="file-dl" data-id="${esc(id)}">Download</button><button class="btn primary" data-act="${back ? 'reopen-book' : 'close'}" data-acc="${esc(back ? back.acc : '')}">Back</button></div>`, { label: f.name });
+  } else downloadFile(f);
+}
+async function downloadFile(f) {
+  const bin = atob(f.data.split(',')[1]); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  await saveFile(f.name, new Blob([u], { type: f.type }));
+}
+
+/* ---------- scanning ---------- */
+async function handleScan(raw) {
+  const acc = normAcc(raw);
+  if (!acc) return;
+  const s = sess(); if (!s) return toast('Create a verification session first.');
+  const rec = regRec(acc); const e = S.entries.get(acc);
+  if (rec && inRange(s, acc) && !e && S.scan.quick && canWork() && rec.st !== 'Withdrawn' && rec.st !== 'Transferred') {
+    const ok = await saveEntry(acc, { status: ST.AV, condition: 'Good', foundRack: rec.rack || '', method: 'scan', remarks: rec.st === 'Issued' ? 'Found on shelf; issue register shows it issued.' : '' });
+    if (ok) S.scan.last = { acc, title: rec.t, status: ST.AV, ok: true, msg: rec.st === 'Issued' ? 'Found on shelf although shown as issued' : 'Saved' };
+    bump(); return;
+  }
+  if (!rec && !canWork()) { S.scan.last = { acc, title: 'Not in stock register', status: ST.EX, ok: false, msg: '' }; bump(); return; }
+  bookSheet(acc, { method: 'scan', fromScan: true });
+}
+let _camStop = null;
+async function cameraSheet() {
+  openSheet(head('Scan with camera', 'Hold the barcode or QR code steady inside the frame.') + `<div class="cam"><video id="cam-v" playsinline muted></video></div><p id="cam-msg" class="small muted">Starting camera…</p>
+    <div class="sheet-foot"><button class="btn" data-act="close">Close</button></div>`, { label: 'Camera scanner' });
+  const v = $('#cam-v'); const msg = $('#cam-msg');
+  const done = code => { stopCamera(); closeSheet(); handleScan(code); };
+  try {
+    if ('BarcodeDetector' in window) {
+      const supported = await BarcodeDetector.getSupportedFormats();
+      const want = ['code_128', 'code_39', 'code_93', 'ean_13', 'ean_8', 'upc_a', 'itf', 'codabar', 'qr_code'].filter(f => supported.includes(f));
+      const det = new BarcodeDetector({ formats: want });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      v.srcObject = stream; await v.play(); msg.textContent = 'Looking for a barcode…';
+      let alive = true;
+      _camStop = () => { alive = false; stream.getTracks().forEach(t => t.stop()); };
+      const tick = async () => {
+        if (!alive) return;
+        try { const r = await det.detect(v); if (r.length) return done(r[0].rawValue); } catch (e) { }
+        setTimeout(tick, 220);
+      };
+      tick();
+    } else {
+      await loadScript(CDN.zxing);
+      const reader = new ZXing.BrowserMultiFormatReader();
+      _camStop = () => { try { reader.reset(); } catch (e) { } };
+      msg.textContent = 'Looking for a barcode…';
+      await reader.decodeFromVideoDevice(undefined, 'cam-v', (result) => { if (result) done(result.getText()); });
+    }
+  } catch (e) {
+    stopCamera();
+    if (msg) msg.textContent = 'The camera is not available here. Use a USB or Bluetooth barcode scanner in the scan box, or type the accession number.';
+  }
+}
+function stopCamera() { if (_camStop) { try { _camStop(); } catch (e) { } _camStop = null; } }
+
+/* ---------- register import ---------- */
+function importSheet() {
+  openSheet(head('Import stock register', 'Excel (.xlsx) or CSV. The first row must hold column names.') + `
+    <p class="small">Recognised columns: Accession No., Title, Author, Publisher, Edition, ISBN, Subject, Class, Price, Date of purchase, Supplier, Bill No., Status, Rack, Last issued to, Last issue date, Last return date. Status values such as Issued, Withdrawn, Transferred, Lost and Under Repair are understood.</p>
+    <label class="f" style="margin-top:12px"><span>Register file</span><input id="imp-file" type="file" accept=".csv,.xlsx,.xls,text/csv" data-chg="imp-file"></label>
+    <div id="imp-preview"></div>
+    <div class="sheet-foot"><button class="btn" data-act="close">Cancel</button><button class="btn primary" id="imp-go" data-act="imp-go" disabled>Replace stock register</button></div>`, { label: 'Import stock register' });
+}
+async function previewImport(file) {
+  const box = $('#imp-preview'); box.innerHTML = '<p class="muted">Reading the file…</p>';
+  try {
+    let aoa;
+    if (/\.xlsx?$/i.test(file.name)) {
+      await loadScript(CDN.xlsx);
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: false });
+      aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' });
+    } else aoa = parseCSV(await file.text());
+    const { recs, skipped, unmapped } = rowsToRecords(aoa);
+    if (!recs.length) throw new Error('No accession records found in the file.');
+    const b = buildRegister(recs);
+    S._import = { recs, name: file.name };
+    box.innerHTML = `<div class="notice ok">${nf(recs.length)} rows read: ${nf(b.list.length)} unique accession numbers${b.dups.length ? `, ${nf(b.dups.length)} numbers entered more than once (kept and flagged as duplicates)` : ''}${skipped ? `, ${nf(skipped)} rows without an accession number skipped` : ''}.</div>
+      ${unmapped.length ? `<p class="small muted">Columns not used: ${esc(unmapped.join(', '))}</p>` : ''}
+      <div class="tblwrap"><table class="tbl"><thead><tr><th>Acc. No.</th><th>Title</th><th>Author</th><th>Rack</th><th>Status</th></tr></thead><tbody>${b.list.slice(0, 5).map(r => `<tr><td class="acc">${esc(r.a)}</td><td>${esc(r.t || '')}</td><td>${esc(r.au || '')}</td><td>${esc(r.rack || '')}</td><td>${esc(r.st)}</td></tr>`).join('')}</tbody></table></div>
+      ${S.regList.length ? `<div class="notice">This replaces the current register of ${nf(S.regList.length)} records for open sessions. Approved verifications keep their own copy.</div>` : ''}`;
+    $('#imp-go').disabled = false;
+  } catch (e) { box.innerHTML = `<div class="notice bad">${esc(e.message || 'The file could not be read.')}</div>`; $('#imp-go').disabled = true; }
+}
+
+/* ============ reports ============ */
+function discrepancyRows(m) {
+  const out = [];
+  m.regDups.forEach(d => out.push({ type: 'Duplicate in register', acc: d.a, title: d.recs[0].t, detail: `Entered ${d.recs.length} times: ${d.recs.map(x => x.t).join(' / ')}` }));
+  m.dupCopies.forEach(r => out.push({ type: 'Duplicate physical copy', acc: r.acc, title: r.rec.t, detail: `${r.e.dupCopies + 1} copies carry this number. ${r.e.dupNote || ''}` }));
+  m.rows.filter(r => r.status === ST.DU).forEach(r => out.push({ type: 'Marked duplicate', acc: r.acc, title: r.rec.t, detail: r.e.remarks || '' }));
+  m.gaps.forEach(g => out.push({ type: 'Missing from register sequence', acc: g[0] === g[1] ? String(g[0]) : `${g[0]} to ${g[1]}`, title: '', detail: `${g[1] - g[0] + 1} number(s) not in the stock register` }));
+  m.rows.filter(r => r.status === ST.WA).concat(m.extras.filter(r => r.status === ST.WA)).forEach(r => out.push({ type: 'Wrong accession number', acc: r.acc, title: r.rec.t || '', detail: [r.e.remarks, r.e.extra && r.e.extra.note].filter(Boolean).join('. ') }));
+  m.locMismatch.forEach(r => out.push({ type: 'Incorrect location', acc: r.acc, title: r.rec.t, detail: `Register: ${r.rec.rack}; found at: ${r.e.foundRack}` }));
+  m.circMismatch.forEach(r => out.push({ type: 'Shown issued but on shelf', acc: r.acc, title: r.rec.t, detail: `Issue register: ${r.rec.lit || 'issued'}${r.rec.lid ? ' on ' + fmtDate(r.rec.lid) : ''}` }));
+  return out;
+}
+function reportDef(k, m) {
+  const A = ['Acc. No.', r => r.acc], T = ['Title', r => r.rec.t || ''], AU = ['Author', r => r.rec.au || ''], P = ['Publisher', r => r.rec.p || ''];
+  const PR = ['Price', r => inr(r.rec.pr)], RK = ['Rack', r => r.rec.rack || ''], REM = ['Remarks', r => (r.e && r.e.remarks) || ''];
+  const iv = r => (r.e && r.e.inv) || {};
+  switch (k) {
+    case 'summary': return { title: 'Physical Verification Summary', columns: [['Particulars', r => r[0]], ['Books', r => typeof r[1] === 'number' ? nf(r[1]) : r[1]], ['% of register', r => r[2] ? pct(r[1], m.total) : '']], rows: summaryRows(m).concat([['Value of books not found or missing', inr(m.value) || '₹0', false]]).map(r => typeof r[1] === 'string' ? [r[0], r[1], false] : r) };
+    case 'complete': return { title: 'Complete Verified Stock', columns: [A, T, AU, P, ['Register status', r => r.extra ? 'Not in register' : (r.rec.st || 'Available')], ['Verification status', r => r.status], ['Condition', r => (r.e && r.e.condition) || ''], ['Location', r => (r.e && r.e.foundRack) || r.rec.rack || ''], REM], rows: m.rows.concat(m.extras) };
+    case 'missing': return { title: 'Missing Book Report', columns: [A, T, AU, PR, ['Last known location', r => iv(r).lastKnown || r.rec.rack || ''], ['Last issued to', r => r.rec.lit || ''], ['Last issue', r => fmtDate(r.rec.lid)], ['Last return', r => fmtDate(r.rec.lrd)], ['Search conducted', r => iv(r).search || ''], ['Recovery', r => iv(r).recovery || 'Under investigation'], ['Responsibility', r => iv(r).responsibility || 'Not determined'], ['Investigation remarks', r => iv(r).remarks || iv(r).explanation || '']], rows: m.rows.filter(r => r.status === ST.MI) };
+    case 'notfound': return { title: 'Books Not Found', columns: [A, T, AU, PR, RK, ['Last issued to', r => r.rec.lit || ''], ['Last return', r => fmtDate(r.rec.lrd)], ['Recovery', r => iv(r).recovery || 'Under investigation'], REM], rows: m.rows.filter(r => r.status === ST.NF) };
+    case 'damaged': return { title: 'Damaged Book Register', columns: [A, T, AU, PR, ['Purchase year', r => String(r.rec.pd || '').slice(0, 4)], ['Condition', r => (r.e && r.e.condition) || (r.status === ST.UR ? 'Sent for repair' : '')], ['Nature of damage', r => (r.e && r.e.damage && r.e.damage.nature) || ''], ['Photograph', r => { const n = ((r.e && r.e.files) || []).filter(f => f.kind === 'photo').length; return n ? `Yes (${n})` : 'No'; }], ['Recommended action', r => (r.e && r.e.damage && r.e.damage.action) || ''], REM], rows: m.damaged };
+    case 'issued': return { title: 'Issued Book Report', columns: [A, T, AU, ['Issued to', r => r.rec.lit || ''], ['Issue date', r => fmtDate(r.rec.lid)], RK, ['Accounted through', r => r.e ? 'Verified by committee' : 'Issue register']], rows: m.rows.filter(r => r.status === ST.IS) };
+    case 'extra': return { title: 'Extra / Unrecorded Book Report', columns: [['Label / Acc. No.', r => r.acc], T, AU, P, ['Edition', r => r.rec.ed || ''], PR, ['Found at', r => (r.e && r.e.foundRack) || ''], ['Status', r => r.status], REM], rows: m.extras };
+    case 'discrepancy': return { title: 'Accession Discrepancy Report', columns: [['Discrepancy', r => r.type], ['Acc. No.', r => r.acc], ['Title', r => r.title || ''], ['Detail', r => r.detail]], rows: discrepancyRows(m) };
+    case 'audit': return { title: 'Audit Trail', columns: [['Date and time', e => fmtDT(e.t)], ['User', e => nameOf(e.uid)], ['Acc. No.', e => e.acc || ''], ['Action', e => e.action + (e.authorized ? ' (authorized)' : '')], ['Previous status', e => e.prev || ''], ['New status', e => e.next || ''], ['Remarks', e => e.remarks || '']], rows: S.audit };
+  }
+}
+const pdfText = v => String(v ?? '').replace(/₹/g, 'Rs. ').replace(/→/g, '->').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+async function newPdf(orientation = 'p') {
+  await loadScript(CDN.jspdf); await loadScript(CDN.autotable);
+  const { jsPDF } = window.jspdf; return new jsPDF({ unit: 'mm', format: 'a4', orientation });
+}
+function pdfHeader(doc, title, m) {
+  const s = m.s; const W = doc.internal.pageSize.getWidth();
+  doc.setFont('times', 'bold'); doc.setFontSize(14); doc.text(pdfText(s.school || ''), W / 2, 16, { align: 'center' });
+  doc.setFont('times', 'normal'); doc.setFontSize(11); doc.text(pdfText(s.library || ''), W / 2, 22, { align: 'center' });
+  doc.setFont('times', 'bold'); doc.setFontSize(12.5); doc.text(pdfText(title), W / 2, 30, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+  doc.text(pdfText(`${s.vid || ''}   ${s.title || ''}   Accession ${s.rangeStart || '...'} to ${s.rangeEnd || '...'}   Generated ${fmtDT(Date.now())}`), W / 2, 36, { align: 'center', maxWidth: W - 24 });
+  doc.setLineWidth(0.4); doc.line(12, 39, W - 12, 39);
+  if (s.status !== 'Approved') { doc.setTextColor(161, 39, 29); doc.setFontSize(8); doc.text('DRAFT: not yet approved', W - 12, 10, { align: 'right' }); doc.setTextColor(0); }
+  return 43;
+}
+function pdfFooters(doc, m) {
+  const n = doc.internal.getNumberOfPages(); const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(90);
+    doc.text(pdfText(`${m.s.vid || ''}  Library Physical Stock Verification`), 12, H - 7);
+    doc.text(`Page ${i} of ${n}`, W - 12, H - 7, { align: 'right' }); doc.setTextColor(0);
+  }
+}
+const AT = { theme: 'grid', styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.4, lineColor: [120, 120, 120], lineWidth: 0.15, textColor: 20, overflow: 'linebreak' }, headStyles: { fillColor: [232, 232, 232], textColor: 20, fontStyle: 'bold' }, margin: { left: 12, right: 12, bottom: 14 } };
+async function pdfTable(k, m) {
+  const def = reportDef(k, m);
+  const doc = await newPdf(def.columns.length > 7 ? 'l' : 'p');
+  const y = pdfHeader(doc, def.title, m);
+  doc.autoTable({ ...AT, startY: y, head: [def.columns.map(c => c[0])], body: def.rows.length ? def.rows.map(r => def.columns.map(c => pdfText(c[1](r)))) : [[{ content: 'Nil', colSpan: def.columns.length, styles: { halign: 'center' } }]] });
+  let fy = doc.lastAutoTable.finalY + 18; const H = doc.internal.pageSize.getHeight(), W = doc.internal.pageSize.getWidth();
+  if (fy > H - 20) { doc.addPage(); fy = 30; }
+  doc.setFontSize(9); doc.line(12, fy, 70, fy); doc.text('Librarian', 12, fy + 4); doc.line(W - 70, fy, W - 12, fy); doc.text('Verification Committee Member', W - 70, fy + 4);
+  pdfFooters(doc, m);
+  return doc.output('arraybuffer');
+}
+function certText(m) {
+  const s = m.s; const gone = m.c[ST.WD] + m.c[ST.TR];
+  return `Certified that the physical verification of the stock of ${s.library || 'the library'}, ${s.school || ''}, covering accession numbers ${s.rangeStart || '(first)'} to ${s.rangeEnd || '(last)'}${s.regRange ? ' of ' + s.regRange : ''}, was carried out for ${s.period || 'the period'} commencing ${fmtDate(s.date)}. ` +
+    `Out of ${nf(m.total)} books recorded in the stock register, ${nf(m.phys)} were found physically present on the shelves, ${nf(m.c[ST.IS])} were on issue to readers as per the issue register, ` +
+    `${nf(gone)} stood withdrawn or transferred, and ${nf(m.c[ST.DA] + m.c[ST.UR])} were damaged or under repair. ${nf(m.c[ST.NF] + m.c[ST.MI])} books could not be traced (${nf(m.c[ST.NF])} not found, ${nf(m.c[ST.MI])} missing), valued at ${inr(m.value) || '₹0'}. ` +
+    `${m.exCount ? nf(m.exCount) + ' books were found that are not entered in the stock register. ' : ''}${m.pending ? nf(m.pending) + ' records remained unverified. ' : ''}`;
+}
+function finalSections(m) {
+  const disc = discrepancyRows(m);
+  const dupTypes = new Set(['Duplicate in register', 'Duplicate physical copy', 'Marked duplicate']);
+  return [
+    ['Missing books', ['Acc. No.', 'Title', 'Author', 'Price', 'Recovery', 'Responsibility', 'Remarks'], m.rows.filter(r => r.status === ST.MI).map(r => { const iv = (r.e && r.e.inv) || {}; return [r.acc, r.rec.t, r.rec.au, inr(r.rec.pr), iv.recovery || 'Under investigation', iv.responsibility || 'Not determined', iv.remarks || (r.e && r.e.remarks) || '']; })],
+    ['Damaged books', ['Acc. No.', 'Title', 'Price', 'Condition', 'Nature of damage', 'Recommended action'], m.damaged.map(r => [r.acc, r.rec.t, inr(r.rec.pr), (r.e && r.e.condition) || (r.status === ST.UR ? 'Under repair' : ''), (r.e && r.e.damage && r.e.damage.nature) || '', (r.e && r.e.damage && r.e.damage.action) || ''])],
+    ['Books not found', ['Acc. No.', 'Title', 'Author', 'Price', 'Rack', 'Last issued to'], m.rows.filter(r => r.status === ST.NF).map(r => [r.acc, r.rec.t, r.rec.au, inr(r.rec.pr), r.rec.rack, r.rec.lit || ''])],
+    ['Extra / unrecorded books', ['Label', 'Title', 'Author', 'Publisher', 'Found at', 'Remarks'], m.extras.filter(r => r.status !== ST.WA).map(r => [r.acc, r.rec.t, r.rec.au, r.rec.p, (r.e && r.e.foundRack) || '', (r.e && r.e.remarks) || ''])],
+    ['Duplicate accession numbers', ['Type', 'Acc. No.', 'Title', 'Detail'], disc.filter(d => dupTypes.has(d.type)).map(d => [d.type, d.acc, d.title, d.detail])],
+    ['Other discrepancies', ['Type', 'Acc. No.', 'Title', 'Detail'], disc.filter(d => !dupTypes.has(d.type)).map(d => [d.type, d.acc, d.title, d.detail])]
+  ].map(([t, h, rows]) => [t, h, rows.map(r => r.map(v => v == null ? '' : String(v)))]);
+}
+function signatories(s) {
+  const cm = (s.committee || []).length ? s.committee : [''];
+  return [['Librarian', s.officer || ''], ...cm.map(c => ['Verification Committee Member', c]), ['Head of Institution / Principal', ''], ['Competent Authority (where applicable)', '']];
+}
+async function finalPDF(m) {
+  const s = m.s; const doc = await newPdf(); const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+  // page 1: certificate
+  doc.setLineWidth(0.8); doc.rect(10, 10, W - 20, H - 20); doc.setLineWidth(0.2); doc.rect(12, 12, W - 24, H - 24);
+  doc.setFont('times', 'bold'); doc.setFontSize(15); doc.text(pdfText(s.school || ''), W / 2, 28, { align: 'center' });
+  doc.setFont('times', 'normal'); doc.setFontSize(12); doc.text(pdfText(s.library || ''), W / 2, 35, { align: 'center' });
+  doc.setFont('times', 'bold'); doc.setFontSize(17); doc.text('Library Physical Stock Verification Certificate', W / 2, 52, { align: 'center' });
+  doc.setLineWidth(0.4); doc.line(50, 56, W - 50, 56);
+  doc.autoTable({ theme: 'plain', startY: 64, margin: { left: 24, right: 24 }, styles: { font: 'times', fontSize: 11, cellPadding: 1.3 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 58 } },
+    body: [['Verification ID', s.vid], ['Verification period', s.period], ['Verification date', fmtDate(s.date)], ['Verification officer', s.officer], ['Committee members', (s.committee || []).join(', ') || '-'], ['Stock register', s.regRange || '-'], ['Accession range', `${s.rangeStart || '...'} to ${s.rangeEnd || '...'}`], ['Total stock (as per register)', nf(m.total)], ['Status', s.status + (s.approvedAt ? ' on ' + fmtDate(s.approvedAt) : '')]].map(r => r.map(pdfText)) });
+  let y = doc.lastAutoTable.finalY + 10;
+  doc.setFont('times', 'normal'); doc.setFontSize(11.5);
+  const lines = doc.splitTextToSize(pdfText(certText(m)), W - 48); doc.text(lines, 24, y, { lineHeightFactor: 1.5 }); y += lines.length * 6.2 + 6;
+  doc.setFont('times', 'bold'); doc.text(pdfText(`Verification result: ${m.pctAcc.toFixed(1)}% of the stock accounted for; ${m.pctPhys.toFixed(1)}% physically verified.`), 24, y, { maxWidth: W - 48 });
+  if (s.status !== 'Approved') { doc.setTextColor(161, 39, 29); doc.setFontSize(10); doc.text('DRAFT: not yet approved', W - 24, 20, { align: 'right' }); doc.setTextColor(0); }
+  doc.setFont('times', 'normal'); doc.setFontSize(10);
+  doc.line(24, H - 40, 84, H - 40); doc.text('Librarian', 24, H - 35); doc.text(pdfText(s.officer || ''), 24, H - 30);
+  doc.line(W - 84, H - 40, W - 24, H - 40); doc.text('Head of Institution / Principal', W - 84, H - 35);
+  // page 2: summary
+  doc.addPage(); y = pdfHeader(doc, 'Reconciliation Summary', m);
+  const sum = summaryRows(m).map(([l, v, p]) => [l, nf(v), p ? pct(v, m.total) : '-']);
+  sum.push(['Unaccounted difference (register less found, issued, withdrawn, transferred)', nf(m.total - m.phys - m.c[ST.IS] - m.c[ST.WD] - m.c[ST.TR]), pct(m.total - m.phys - m.c[ST.IS] - m.c[ST.WD] - m.c[ST.TR], m.total)]);
+  sum.push(['Value of books not found or missing', inr(m.value) || '₹0', '-']);
+  doc.autoTable({ ...AT, styles: { ...AT.styles, fontSize: 10, cellPadding: 2 }, startY: y, head: [['Particulars', 'Books', '% of register']], body: sum.map(r => r.map(pdfText)), columnStyles: { 1: { halign: 'right', cellWidth: 30 }, 2: { halign: 'right', cellWidth: 30 } } });
+  // page 3+: exceptions
+  doc.addPage(); y = pdfHeader(doc, 'Detailed Exceptions', m);
+  for (const [t, h, rows] of finalSections(m)) {
+    if (y > H - 40) { doc.addPage(); y = 20; }
+    doc.setFont('times', 'bold'); doc.setFontSize(11.5); doc.text(`${t} (${rows.length})`, 12, y); y += 2;
+    doc.autoTable({ ...AT, startY: y, head: [h], body: rows.length ? rows.map(r => r.map(pdfText)) : [[{ content: 'Nil', colSpan: h.length, styles: { halign: 'center' } }]] });
+    y = doc.lastAutoTable.finalY + 9;
+  }
+  // final remarks + signatures
+  doc.addPage(); y = pdfHeader(doc, 'Final Remarks of the Verification Committee', m);
+  const fr = s.finalRemarks || {};
+  for (const [t, v] of [['Observations', fr.observations], ['Recommendations', fr.recommendations]]) {
+    doc.setFont('times', 'bold'); doc.setFontSize(11.5); doc.text(t, 12, y); y += 3;
+    doc.setFont('times', 'normal'); doc.setFontSize(10.5);
+    const ls = doc.splitTextToSize(pdfText(v || ' '), W - 30); const h = Math.max(28, ls.length * 5 + 8);
+    doc.rect(12, y, W - 24, h); doc.text(ls, 15, y + 6); y += h + 9;
+  }
+  doc.setFont('times', 'normal'); doc.setFontSize(10);
+  const sig = signatories(s); let col = 0;
+  y += 12;
+  for (const [role, name] of sig) {
+    if (y > H - 30) { doc.addPage(); y = 34; }
+    const x = col ? W / 2 + 6 : 12;
+    doc.line(x, y, x + 78, y); doc.text(pdfText(role), x, y + 5); if (name) doc.text(pdfText(name), x, y + 10); doc.text('Date:', x, y + 15);
+    col = 1 - col; if (!col) y += 32;
+  }
+  pdfFooters(doc, m);
+  return doc.output('arraybuffer');
+}
+async function xlsxReport(k, m) {
+  await loadScript(CDN.xlsx);
+  const wb = XLSX.utils.book_new(); const s = m.s;
+  const meta = [[s.school || ''], [s.library || ''], [], ['Verification ID', s.vid], ['Session', s.title], ['Accession range', `${s.rangeStart || ''} to ${s.rangeEnd || ''}`], ['Status', s.status], ['Generated', fmtDT(Date.now())], []];
+  const add = (name, head, rows, title) => {
+    const aoa = [[title || name], ...meta, head, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = head.map((h, i) => ({ wch: Math.min(48, Math.max(String(h).length + 2, ...rows.slice(0, 200).map(r => String(r[i] ?? '').length + 1), 8)) }));
+    XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
+  };
+  if (k === 'final') {
+    add('Certificate', ['Certificate'], [[certText(m)], [`Verification result: ${m.pctAcc.toFixed(1)}% accounted for; ${m.pctPhys.toFixed(1)}% physically verified.`]], 'Library Physical Stock Verification Certificate');
+    add('Summary', ['Particulars', 'Books', '% of register'], summaryRows(m).map(([l, v, p]) => [l, v, p && m.total ? +(v / m.total * 100).toFixed(2) : '']), 'Reconciliation Summary');
+    for (const [t, h, rows] of finalSections(m)) add(t.replace(/[\/\\?*\[\]:]/g, '-'), h, rows, t);
+    const fr = s.finalRemarks || {};
+    add('Remarks', ['Section', 'Text'], [['Observations', fr.observations || ''], ['Recommendations', fr.recommendations || ''], ...signatories(s).map(([r, n]) => ['Signature: ' + r, n])], 'Final Remarks');
+  } else {
+    const def = reportDef(k, m);
+    add(def.title.slice(0, 31), def.columns.map(c => c[0]), def.rows.map(r => def.columns.map(c => c[1](r))), def.title);
+  }
+  return XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+}
+function pageHead(title, m) {
+  const s = m.s;
+  return `${s.status !== 'Approved' ? '<div class="draft">Draft: not yet approved</div>' : ''}<div class="hdr"><b>${esc(s.school || '')}</b>${esc(s.library || '')}<h2 style="margin:2mm 0 1mm">${esc(title)}</h2>
+    <div style="font:8.5pt var(--sans)">${esc(s.vid || '')}, ${esc(s.title || '')}, accession ${esc(s.rangeStart || '…')} to ${esc(s.rangeEnd || '…')}. Generated ${fmtDT(Date.now())}</div></div>`;
+}
+const htmlTable = (h, rows, rightCols = []) => `<table><thead><tr>${h.map(x => `<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.length ? rows.map(r => `<tr>${r.map((v, i) => `<td class="${rightCols.includes(i) ? 'r' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${h.length}" style="text-align:center">Nil</td></tr>`}</tbody></table>`;
+function finalHTML(m) {
+  const s = m.s; const fr = s.finalRemarks || {};
+  const sum = summaryRows(m).map(([l, v, p]) => [l, nf(v), p ? pct(v, m.total) : '—']);
+  sum.push(['Unaccounted difference', nf(m.total - m.phys - m.c[ST.IS] - m.c[ST.WD] - m.c[ST.TR]), pct(m.total - m.phys - m.c[ST.IS] - m.c[ST.WD] - m.c[ST.TR], m.total)], ['Value of books not found or missing', inr(m.value) || '₹0', '—']);
+  return `<div class="page">${s.status !== 'Approved' ? '<div class="draft">Draft: not yet approved</div>' : ''}
+    <div class="center"><b style="font-size:15pt">${esc(s.school || '')}</b><br>${esc(s.library || '')}</div>
+    <div class="cert"><h1>Library Physical Stock Verification Certificate</h1>
+      <table class="meta" style="margin-top:5mm">${[['Verification ID', s.vid], ['Verification period', s.period], ['Verification date', fmtDate(s.date)], ['Verification officer', s.officer], ['Committee members', (s.committee || []).join(', ') || '—'], ['Stock register', s.regRange || '—'], ['Accession range', `${s.rangeStart || '…'} to ${s.rangeEnd || '…'}`], ['Total stock (as per register)', nf(m.total)], ['Status', s.status + (s.approvedAt ? ' on ' + fmtDate(s.approvedAt) : '')]].map(([k, v]) => `<tr><td style="width:52mm"><b>${k}</b></td><td>${esc(v || '')}</td></tr>`).join('')}</table>
+      <p style="margin-top:5mm;text-align:justify">${esc(certText(m))}</p>
+      <p><b>Verification result: ${m.pctAcc.toFixed(1)}% of the stock accounted for; ${m.pctPhys.toFixed(1)}% physically verified.</b></p>
+      <div class="sigs"><div class="sig">Librarian<br>${esc(s.officer || '')}</div><div class="sig">Head of Institution / Principal</div></div>
+    </div></div>
+  <div class="page">${pageHead('Reconciliation Summary', m)}${htmlTable(['Particulars', 'Books', '% of register'], sum, [1, 2])}</div>
+  <div class="page">${pageHead('Detailed Exceptions', m)}${finalSections(m).map(([t, h, rows]) => `<h2>${esc(t)} (${rows.length})</h2>${htmlTable(h, rows)}`).join('')}</div>
+  <div class="page">${pageHead('Final Remarks of the Verification Committee', m)}
+    <h2>Observations</h2><div class="remark">${esc(fr.observations || '')}</div>
+    <h2>Recommendations</h2><div class="remark">${esc(fr.recommendations || '')}</div>
+    <div class="sigs">${signatories(s).map(([r, n]) => `<div class="sig">${esc(r)}${n ? '<br>' + esc(n) : ''}<br>Date:</div>`).join('')}</div></div>`;
+}
+function tableHTML(k, m) {
+  const def = reportDef(k, m);
+  return `<div class="page">${pageHead(def.title, m)}${htmlTable(def.columns.map(c => c[0]), def.rows.map(r => def.columns.map(c => c[1](r))))}
+    <div class="sigs"><div class="sig">Librarian</div><div class="sig">Verification Committee Member</div></div></div>`;
+}
+function printHTML(html) {
+  $('#print-root').innerHTML = html;
+  document.body.classList.add('printing');
+  const done = () => { document.body.classList.remove('printing'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  try { window.print(); } catch (e) { toast('Printing is not available in this view. Download the PDF and print it.'); }
+  setTimeout(done, 1500);
+}
+async function getDownloads() {
+  if (S.downloads !== undefined) return S.downloads;
+  try { S.downloads = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { S.downloads = null; }
+  return S.downloads;
+}
+async function saveFile(filename, data) {
+  const dl = await getDownloads();
+  if (dl) {
+    try { await dl.save({ filename, data }); return; }
+    catch (e) {
+      if (e && e.code === 'declined') return;
+      if (e && e.code === 'rate_limited') return toast('A download is already waiting for your confirmation.');
+      if (e && !['unavailable', 'not_granted', 'capability_disabled', 'capability_removed'].includes(e.code)) return toast(e.message || 'The file could not be saved.');
+    }
+  }
+  const blob = data instanceof Blob ? data : new Blob([data]);
+  const url = URL.createObjectURL(blob); const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+}
+async function exportReport(k, fmt) {
+  const m = model(); if (!m) return;
+  if (k === 'audit') await resolveNames(S.audit.map(e => e.uid));
+  const base = `${(m.s.vid || 'verification').replace(/[^A-Za-z0-9-]+/g, '_')}_${k}`;
+  try {
+    if (fmt === 'print') return printHTML(k === 'final' ? finalHTML(m) : tableHTML(k, m));
+    toast('Preparing the file…', 1800);
+    if (fmt === 'pdf') return saveFile(base + '.pdf', k === 'final' ? await finalPDF(m) : await pdfTable(k, m));
+    if (fmt === 'xlsx') return saveFile(base + '.xlsx', await xlsxReport(k, m));
+  } catch (e) { console.error(e); toast(e.message || 'The report could not be prepared.'); }
+}
+function finalPreview() {
+  const m = model(); if (!m) return;
+  openSheet(head('Final verification report', m.s.status === 'Approved' ? 'Approved record' : 'Draft until the session is approved') +
+    `<div class="row" style="margin-bottom:10px"><button class="btn primary" data-act="export" data-r="final" data-fmt="pdf">Download PDF</button><button class="btn" data-act="export" data-r="final" data-fmt="xlsx">Excel</button><button class="btn" data-act="export" data-r="final" data-fmt="print">Print A4</button></div>
+    <div class="preview">${finalHTML(m)}</div>`, { wide: true, label: 'Final report' });
+}
+
+/* ============ events ============ */
+const ACT = {
+  nav: el => { closeSheet(); S.view = el.dataset.v; uiSet('view', S.view); bump(); window.scrollTo(0, 0); },
+  more: () => moreSheet(),
+  close: () => { if (_ask) finishAsk(null); else closeSheet(); },
+  'sheet-bg': (el, ev) => { if (ev.target === el) ACT.close(); },
+  'ask-no': () => finishAsk(null),
+  'ask-yes': el => { const i = $('#ask-in'); const v = i ? i.value.trim() : true; if (el.dataset.req === '1' && !v) return toast('This field is required.'); finishAsk(v || true); },
+  'new-session': () => sessionSheet(false),
+  'edit-session': () => sessionSheet(true),
+  'session-save': el => saveSessionForm(el.dataset.edit === '1'),
+  'open-session': el => { openSession(el.dataset.id); S.view = 'dashboard'; uiSet('view', 'dashboard'); },
+  'goto-books': el => { const f = el.dataset.f; S.books.filter = f === 'pending' ? 'pending' : f; S.books.page = 0; S.view = 'books'; uiSet('view', 'books'); bump(); window.scrollTo(0, 0); },
+  'books-filter': el => { S.books.filter = el.dataset.f; S.books.page = 0; bump(); },
+  'books-page': el => { S.books.page = Math.max(0, S.books.page + +el.dataset.d); bump(); window.scrollTo(0, 0); },
+  'reg-page': el => { S.reg.page = Math.max(0, S.reg.page + +el.dataset.d); bump(); },
+  'inv-filter': el => { S.inv.filter = el.dataset.f; bump(); },
+  'scan-tab': el => { S.scan.tab = el.dataset.v; bump(); setTimeout(() => { const i = $(S.scan.tab === 'scan' ? '#scan-in' : '#search-q'); if (i) i.focus(); }, 50); },
+  'scan-go': () => { const i = $('#scan-in'); if (i) { const v = i.value; i.value = ''; handleScan(v); } },
+  camera: () => cameraSheet(),
+  'open-book': el => bookSheet(el.dataset.acc, { method: el.dataset.method || 'manual' }),
+  'reopen-book': el => el.dataset.acc ? bookSheet(el.dataset.acc) : closeSheet(),
+  'book-save': el => saveBookSheet(el.dataset.acc),
+  'book-dup': async el => {
+    const acc = el.dataset.acc; const e = S.entries.get(acc) || {};
+    const note = $('#f-remarks') ? $('#f-remarks').value.trim() : '';
+    const ok = await saveEntry(acc, { dupCopies: (e.dupCopies || 0) + 1, dupNote: note || 'Another physical copy carries the same accession number.' }, { action: 'Duplicate copy recorded', reason: isLocked(sess()) ? ($('#f-reason') || {}).value : undefined });
+    if (ok) { closeSheet(); toast(`Second copy recorded against accession ${acc}.`); }
+  },
+  'corr-send': async el => {
+    const acc = el.dataset.acc; const p = readBookForm(); const reason = ($('#f-reason') || {}).value?.trim();
+    if (!reason) return toast('Enter the reason for the correction.');
+    await requestCorrection(acc, { status: p.status, condition: p.condition, remarks: p.remarks, foundRack: p.foundRack }, reason); closeSheet();
+  },
+  'corr-decide': async el => {
+    const ok = el.dataset.ok === '1';
+    const note = await ask({ title: ok ? 'Approve correction' : 'Reject correction', body: ok ? '<p>The change will be applied and recorded as an authorized correction.</p>' : '<p>The record stays unchanged. The rejection is recorded in the audit trail.</p>', confirm: ok ? 'Approve and apply' : 'Reject', danger: !ok, input: { label: 'Officer note (optional)' } });
+    if (note === null) return;
+    decideCorrection(el.dataset.id, ok, note === true ? '' : note);
+  },
+  'open-inv': el => invSheet(el.dataset.acc),
+  'inv-save': el => saveInv(el.dataset.acc, el.dataset.to),
+  'view-file': el => viewFile(el.dataset.id),
+  'file-dl': async el => { const f = await getFile(el.dataset.id); if (f) downloadFile(f); },
+  'bulk-nf': async () => {
+    const m = model();
+    const r = await ask({ title: `Mark ${nf(m.pending)} books Not Found?`, body: '<p>Use this only after the shelves, reading room and classrooms have been searched. Each book gets a Not Found record and an entry in the audit trail, and appears in the missing-book investigation list.</p>', confirm: 'Mark Not Found', danger: true });
+    if (r) bulkNotFound();
+  },
+  'sess-complete': async () => {
+    const r = await ask({ title: 'Mark verification completed?', body: '<p>All books in the range are accounted for. Scanning stays open until you submit.</p>', confirm: 'Mark completed' });
+    if (r) updateSession({ status: 'Completed', completedAt: Date.now(), completedBy: S.uid }, 'Marked completed');
+  },
+  'sess-reopen': () => updateSession({ status: 'In Progress' }, 'Reopened for scanning'),
+  'sess-submit': async () => {
+    const r = await ask({ title: 'Submit for approval?', body: '<p>After submission, records can only be changed by an authorized officer, and every change is shown in the audit trail.</p>', confirm: 'Submit' });
+    if (r) updateSession({ status: 'Submitted', submittedAt: Date.now(), submittedBy: S.uid, summary: summaryOf(model()) }, 'Submitted for approval');
+  },
+  'sess-return': async () => {
+    const r = await ask({ title: 'Return for correction?', body: '<p>The session goes back to In Progress so the committee can make changes.</p>', confirm: 'Return', input: { label: 'Reason *', required: true } });
+    if (r) updateSession({ status: 'In Progress', returnedAt: Date.now(), returnedBy: S.uid, _remarks: r }, 'Returned for correction');
+  },
+  'sess-approve': async () => {
+    const r = await ask({ title: 'Approve and lock this verification?', body: '<p>A permanent copy of the verification, the register entries for this range and the audit trail is locked. Only authorized officers can make corrections afterwards.</p>', confirm: 'Approve and lock' });
+    if (r) approveAndLock();
+  },
+  'save-remarks': async () => {
+    const s = sess(); const reason = ($('#fr-reason') || {}).value?.trim();
+    if (isLocked(s) && !reason) return toast('Enter the reason for changing remarks after submission.');
+    await updateSession({ finalRemarks: { observations: $('#fr-obs').value.trim(), recommendations: $('#fr-rec').value.trim() }, _remarks: reason || '' }, isLocked(s) ? 'Final remarks corrected' : 'Final remarks saved');
+    toast('Remarks saved.');
+  },
+  'final-preview': () => finalPreview(),
+  export: el => exportReport(el.dataset.r, el.dataset.fmt),
+  'load-sample': async () => {
+    if (!S.isAdmin) return;
+    if (S.regList.length) { const r = await ask({ title: 'Replace the register with sample data?', body: `<p>The current register of ${nf(S.regList.length)} records will be replaced for open sessions.</p>`, confirm: 'Replace', danger: true }); if (!r) return; }
+    toast('Loading the sample register…');
+    try { await writeRegister(sampleRegister(), 'sample'); toast('Sample register loaded.'); } catch (e) { toast(dbErr(e)); }
+  },
+  'demo-verify': async () => { const r = await ask({ title: 'Fill with sample verification results?', body: '<p>Adds realistic sample results (found, damaged, not found, extra books) for books not yet verified, leaving a few pending. Recorded in the audit trail as sample data.</p>', confirm: 'Add sample results' }); if (r) demoVerification(); },
+  'reg-import': () => importSheet(),
+  'reg-template': async () => {
+    const csv = 'Accession No.,Title,Author,Publisher,Edition,ISBN,Subject,Class,Price,Date of purchase,Supplier,Bill No.,Status,Rack,Last issued to,Last issue date,Last return date\n1,Godan,Premchand,Rajkamal Prakashan,2nd,9788126704,Hindi Literature,General,250,2019-07-11,Sharma Book Depot,B/2019/412,Available,R-19/B,,,\n';
+    saveFile('stock_register_template.csv', new Blob([csv], { type: 'text/csv' }));
+  },
+  'imp-go': async () => {
+    const imp = S._import; if (!imp) return;
+    $('#imp-go').disabled = true; toast('Writing the stock register…');
+    try { await writeRegister(imp.recs, imp.name); S._import = null; closeSheet(); toast(`Stock register imported: ${nf(imp.recs.length)} rows.`); }
+    catch (e) { toast(dbErr(e)); $('#imp-go').disabled = false; }
+  }
+};
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-act]'); if (!el) return;
+  const fn = ACT[el.dataset.act]; if (!fn) return;
+  if (el.dataset.act === 'sheet-bg' && ev.target !== el) return;
+  ev.preventDefault(); fn(el, ev);
+});
+document.addEventListener('change', ev => {
+  const el = ev.target; const k = el.dataset && el.dataset.chg; if (!k) return;
+  if (k === 'session') { openSession(el.value); }
+  else if (k === 'quick') { S.scan.quick = el.checked; uiSet('quick', el.checked); }
+  else if (k === 'search-field') { S.scan.field = el.value; bump(); }
+  else if (k === 'imp-file') { if (el.files[0]) previewImport(el.files[0]); }
+  else if (k === 'f-cond' || k === 'f-status') {
+    const st = $('#f-status'), cd = $('#f-cond');
+    if (k === 'f-cond' && SEVERE.has(cd.value) && st.value === ST.AV) st.value = ST.DA;
+    const showD = st.value === ST.DA || st.value === ST.UR || SEVERE.has(cd.value) || WORN.has(cd.value);
+    $('#f-damage').hidden = !showD;
+    const noRec = !regRec(S.sheetCtx && S.sheetCtx.acc);
+    $('#f-extra').hidden = !(noRec || st.value === ST.EX || st.value === ST.WA);
+  }
+});
+let _inT = null;
+document.addEventListener('input', ev => {
+  const el = ev.target; const k = el.dataset && el.dataset.in; if (!k) return;
+  if (k === 'books-q') { S.books.q = el.value; S.books.page = 0; }
+  if (k === 'search-q') S.scan.q = el.value;
+  if (k === 'aud-q') S.aud.q = el.value;
+  if (k === 'reg-q') { S.reg.q = el.value; S.reg.page = 0; }
+  clearTimeout(_inT); _inT = setTimeout(bump, 160);
+});
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && S.sheetOpen) { ACT.close(); return; }
+  S.lastAct = Date.now();
+  if (ev.key === 'Enter' && ev.target && ev.target.id === 'scan-in') { ev.preventDefault(); ACT['scan-go'](); }
+});
+
+/* ============ offline app: people, backup, install ============ */
+const APP_VERSION = '1.0.0';
+function refreshRole() {
+  if (S.mode !== 'local') return;
+  S.isAdmin = !(S.sec && S.sec.pinHash) || !!S.unlocked;
+  S.canWrite = true; bump();
+}
+async function hashPin(pin, salt) {
+  const t = new TextEncoder().encode(salt + ':' + pin);
+  if (window.crypto && crypto.subtle) {
+    const h = await crypto.subtle.digest('SHA-256', t);
+    return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  let h = 2166136261; for (const b of t) { h ^= b; h = Math.imul(h, 16777619) >>> 0; }
+  return 'f' + h.toString(16);
+}
+const hasPin = () => !!(S.sec && S.sec.pinHash);
+function lockOfficer(quiet) { if (!S.unlocked) return; S.unlocked = false; refreshRole(); if (!quiet) toast('Officer mode locked.'); }
+setInterval(() => { if (S.unlocked && Date.now() - (S.lastAct || 0) > 20 * 60000) { lockOfficer(true); toast('Officer mode locked after 20 minutes without activity.'); } }, 60000);
+document.addEventListener('pointerdown', () => { S.lastAct = Date.now(); }, true);
+
+function operatorSheet(first) {
+  openSheet(head(first ? 'Who is using the app?' : 'You and officer access', first ? 'Your name is recorded against every verification in the audit trail.' : '') + `
+    <label class="f"><span>Your name and designation</span><input id="op-name" type="text" maxlength="60" value="${esc(S.uid)}" placeholder="e.g. Smt. K. Iyer, Librarian" autofocus></label>
+    ${first ? '' : `<div class="section" style="margin-top:14px">
+      <h3>Officer access</h3>
+      ${!hasPin() ? `<p class="small">No officer PIN is set, so everyone using this device can approve sessions, make authorized corrections and record responsibility. Set a PIN in Backup &amp; settings to restrict this.</p>`
+        : S.unlocked ? `<p class="small">Officer mode is unlocked. It locks again after 20 minutes without activity.</p><button class="btn" data-act="officer-lock">Lock officer mode</button>`
+        : `<p class="small">Approving, authorized corrections, recording responsibility, importing the register and restoring backups need the officer PIN.</p>
+           <div class="row"><input id="op-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="Officer PIN" style="max-width:180px"><button class="btn primary" data-act="officer-unlock">Unlock officer mode</button></div>`}
+    </div>`}
+    <div class="sheet-foot">${first ? '' : '<button class="btn" data-act="close">Close</button>'}<button class="btn primary" data-act="op-save" data-first="${first ? 1 : 0}">${first ? 'Start' : 'Save name'}</button></div>`, { label: 'Operator' });
+}
+let _pinFails = 0, _pinWait = 0;
+async function unlockOfficer() {
+  const el = $('#op-pin'); if (!el) return;
+  if (Date.now() < _pinWait) return toast('Too many attempts. Wait 30 seconds.');
+  const ok = (await hashPin(el.value.trim(), S.sec.salt)) === S.sec.pinHash;
+  if (!ok) { el.value = ''; if (++_pinFails >= 5) { _pinWait = Date.now() + 30000; _pinFails = 0; } return toast('That PIN is not correct.'); }
+  _pinFails = 0; S.unlocked = true; S.lastAct = Date.now(); refreshRole(); closeSheet();
+  toast('Officer mode unlocked.');
+  if (S.curBase) logEvent({ action: 'Officer mode unlocked', acc: '', prev: '', next: '', remarks: 'Authorized officer access on this device' }).catch(() => {});
+}
+function pinSheet() {
+  openSheet(head(hasPin() ? 'Change officer PIN' : 'Set officer PIN', 'Use 4 to 12 digits. Share it only with officers authorized to approve verification.') + `
+    <div class="grid2"><label class="f"><span>New PIN</span><input id="pin1" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password" autofocus></label>
+    <label class="f"><span>Repeat new PIN</span><input id="pin2" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password"></label></div>
+    <p class="small muted" style="margin-top:8px">The PIN keeps everyday users of a shared library computer out of officer actions. It is not a substitute for locking the computer itself.</p>
+    <div class="sheet-foot"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="pin-save">Save PIN</button></div>`, { label: 'Officer PIN' });
+}
+
+/* ---------- backup ---------- */
+async function downloadBackup() {
+  await Local.flush();
+  const data = {}; for (const [k, v] of Local.mem) data[k] = v;
+  const b = { app: 'library-stock-verification', format: 1, version: APP_VERSION, exportedAt: Date.now(), by: S.uid || '', data };
+  const name = `stock-verification-backup_${today()}_${(S.uid || 'device').replace(/[^A-Za-z0-9]+/g, '-').slice(0, 30)}.json`;
+  await saveFile(name, new Blob([JSON.stringify(b)], { type: 'application/json' }));
+  uiSet('lastBackup', Date.now()); bump();
+}
+async function readBackup(file) {
+  let j; try { j = JSON.parse(await file.text()); } catch (e) { throw new Error('This file could not be read as a backup.'); }
+  if (!j || j.app !== 'library-stock-verification' || !j.data) throw new Error('This file is not a stock verification backup.');
+  return j;
+}
+async function mergeBackup(j) {
+  const inc = j.data; const cur = p => Local.mem.get(p);
+  const st = { sessions: 0, records: 0, updated: 0, events: 0, files: 0, skipped: 0, regAdded: false, regDiffers: false };
+  const writes = []; const touched = new Set();
+  for (const [p, v] of Object.entries(inc)) {
+    let m;
+    if ((m = p.match(/^sessions\/([^/]+)$/))) {
+      const c = cur(p);
+      if (!c) { writes.push([p, v]); st.sessions++; }
+      else if (SESSION_STATES.indexOf(v.status) > SESSION_STATES.indexOf(c.status) && !isLocked(c)) writes.push([p, { ...c, ...v }]);
+      continue;
+    }
+    if ((m = p.match(/^sessions\/([^/]+)\/buckets\/[^/]+$/))) {
+      const ls = cur(`sessions/${m[1]}`); const locked = ls && isLocked(ls);
+      const c = cur(p) || { items: {} }; const items = { ...(c.items || {}) }; let ch = 0;
+      for (const [k, e] of Object.entries(v.items || {})) {
+        const o = items[k];
+        if (!o || (e.at || 0) > (o.at || 0)) {
+          if (locked) { st.skipped++; continue; }
+          if (!o) st.records++; else st.updated++;
+          items[k] = e; ch++;
+        }
+      }
+      if (ch) { writes.push([p, { ...c, items }]); touched.add(m[1]); }
+      continue;
+    }
+    if (/^(sessions|locked\/records\/sessions)\/[^/]+\/audit\/[^/]+$/.test(p)) {
+      const c = cur(p) || { events: {} }; const ev = { ...(c.events || {}) }; let ch = 0;
+      for (const [k, e] of Object.entries(v.events || {})) if (!ev[k]) { ev[k] = e; ch++; }
+      if (ch) { st.events += ch; writes.push([p, { ...c, events: ev }]); }
+      continue;
+    }
+    if (/^sessions\/[^/]+\/(files|corrections)\/[^/]+$/.test(p)) {
+      if (!cur(p)) { writes.push([p, v]); if (p.includes('/files/')) st.files++; }
+      else if (p.includes('/corrections/') && v.state !== 'Pending' && cur(p).state === 'Pending') writes.push([p, v]);
+      continue;
+    }
+    if (p.startsWith('locked/') || p === 'config/security') { if (!cur(p)) writes.push([p, v]); continue; }
+  }
+  const ir = inc['master/register'], lr = cur('master/register');
+  if (ir && !lr) {
+    for (const [p, v] of Object.entries(inc)) if (p.startsWith('master/register/chunks/') && v.gen === ir.gen) writes.push([p, v]);
+    writes.push(['master/register', ir]); st.regAdded = true;
+  } else if (ir && lr && ir.gen !== lr.gen) st.regDiffers = true;
+  for (const [p, v] of writes) await Store.set(p, v);
+  for (const sid of touched) {
+    const s = cur(`sessions/${sid}`);
+    await logEvent({ action: 'Records merged from another device', acc: '', prev: '', next: '', remarks: `Backup from ${j.by || 'another device'} exported ${fmtDT(j.exportedAt)}` }, s && s.status === 'Approved' && s.lockedAt ? `locked/records/sessions/${sid}` : `sessions/${sid}`);
+  }
+  return st;
+}
+
+/* ---------- settings view ---------- */
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+VIEWS.settings = () => {
+  const lb = uiGet('lastBackup', 0);
+  const admin = S.isAdmin;
+  return `<div><h1>Backup &amp; settings</h1><p class="muted">This app keeps every record on this device. It works without an internet connection once installed.</p></div>
+  <div class="section"><h2>Install and offline use</h2>
+    <div id="offline-status"><p class="muted small">Checking offline readiness…</p></div>
+    ${isStandalone() ? '<p>Running as an installed app.</p>'
+      : S.installEvt ? '<button class="btn primary" data-act="install">Install app on this device</button>'
+      : isIOS() ? '<p>To install on iPhone or iPad: open this page in Safari, tap Share, then Add to Home Screen.</p>'
+      : '<p>To install: open the browser menu and choose Install app (Chrome, Edge) or Add to Home screen (Android).</p>'}
+  </div>
+  <div class="section"><h2>Backup</h2>
+    <p>${lb ? `Last backup downloaded ${fmtDT(lb)}.` : 'No backup downloaded from this device yet.'} A backup holds the stock register, every session, photographs, investigation records and the audit trail.</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="backup">Download backup</button>
+      <label class="btn" style="cursor:pointer">Merge records from another device<input type="file" accept=".json,application/json" data-chg="merge-file" class="sr"></label>
+      ${admin ? `<label class="btn danger" style="cursor:pointer">Restore from backup<input type="file" accept=".json,application/json" data-chg="restore-file" class="sr"></label>` : ''}
+    </div>
+    <h3 style="margin-top:16px">Verifying with several devices</h3>
+    <ol class="small" style="padding-left:20px;margin:6px 0 0">
+      <li>On the main library computer, load the register, create the session and download a backup.</li>
+      <li>On each scanning phone or laptop, install the app and restore that backup.</li>
+      <li>Give each device different racks. When scanning ends, download a backup from each device.</li>
+      <li>On the main computer, use Merge records from another device for each backup. The newest record for every accession number is kept, and the merge is noted in the audit trail.</li>
+    </ol>
+    <p class="small muted" style="margin-top:8px">Merging never changes a session that is already submitted or approved on the receiving device.</p>
+  </div>
+  <div class="section"><h2>Storage on this device</h2><div id="storage-status"><p class="muted small">Checking…</p></div></div>
+  <div class="section"><h2>People and officer access</h2>
+    <p>Using the app as <b>${esc(S.uid || 'unnamed user')}</b>. <button class="btn sm" data-act="operator">Change name</button></p>
+    ${!hasPin() ? `<div class="notice">No officer PIN is set. Anyone using this device can approve sessions, make authorized corrections and record responsibility for missing books.</div>
+      ${admin ? '<button class="btn primary" data-act="pin-set">Set officer PIN</button>' : ''}`
+      : `<p>${S.unlocked ? 'Officer mode is unlocked on this device.' : 'Officer actions are protected by a PIN.'}</p>
+      <div class="row">${S.unlocked ? '<button class="btn" data-act="officer-lock">Lock officer mode</button><button class="btn" data-act="pin-set">Change PIN</button><button class="btn danger" data-act="pin-remove">Remove PIN</button>' : '<button class="btn primary" data-act="operator">Unlock officer mode</button>'}</div>`}
+  </div>
+  ${admin ? `<div class="section"><h2>Erase data</h2><p class="small">Removes the register, all sessions, photographs and the audit trail from this device, for example after trying the sample register. Download a backup first if you may need any of it.</p>
+    <button class="btn danger" data-act="erase">Erase all data on this device</button></div>` : ''}
+  <p class="small muted" style="margin-top:16px">Library Stock Verification, version ${APP_VERSION}</p>`;
+};
+async function settingsStatus() {
+  const off = $('#offline-status'), sto = $('#storage-status');
+  if (off) {
+    if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) {
+      off.innerHTML = `<div class="notice">This copy was opened directly as a file, so it saves records but cannot be installed or prepared for offline use. Open it from its web address (https://) to install it.</div>`;
+    } else {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const libs = [CDN.xlsx, CDN.jspdf, CDN.autotable, CDN.zxing];
+        let have = 0; for (const u of libs) if (await caches.match(u)) have++;
+        const shell = await caches.match(new URL('./index.html', location.href).href) || await caches.match(new URL('./', location.href).href);
+        const ready = reg && shell && have === libs.length;
+        if ($('#offline-status')) $('#offline-status').innerHTML = ready
+          ? `<div class="notice ok">Ready to work offline. The app, PDF and Excel export, and the camera barcode reader are saved on this device.</div>`
+          : `<div class="notice">Preparing for offline use (${have} of ${libs.length} tools saved). Keep the app open while connected to the internet for a minute, then check again.</div>`;
+      } catch (e) { off.innerHTML = '<p class="small muted">Offline status could not be checked.</p>'; }
+    }
+  }
+  if (sto) {
+    try {
+      const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+      const per = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false;
+      const mb = b => (b / 1048576).toFixed(1) + ' MB';
+      if (!$('#storage-status')) return;
+      $('#storage-status').innerHTML = `${est ? `<p>Using ${mb(est.usage || 0)} of about ${mb(est.quota || 0)} available.</p>` : ''}
+        <p>${per ? 'Storage is marked permanent: the browser will not clear it to free space.' : 'The browser may clear this data if the device runs low on space.'}</p>
+        ${per ? '' : '<button class="btn sm" data-act="persist">Keep data permanently</button>'}
+        ${Local.idb ? '' : '<div class="notice bad">This browser is using limited storage. Photographs may not fit; use an up-to-date Chrome, Edge, Firefox or Safari.</div>'}`;
+    } catch (e) { }
+  }
+}
+
+/* ---------- actions ---------- */
+Object.assign(ACT, {
+  operator: () => operatorSheet(false),
+  'op-save': el => {
+    const v = ($('#op-name') || {}).value?.trim();
+    if (!v) return toast('Enter your name.');
+    S.uid = v.slice(0, 60); uiSet('operator', S.uid); closeSheet(); bump();
+    if (el.dataset.first === '1' && !S.regList.length) toast('Start by loading the stock register.');
+  },
+  'officer-unlock': () => unlockOfficer(),
+  'officer-lock': () => { lockOfficer(); closeSheet(); },
+  'pin-set': () => { if (!S.isAdmin) return toast('Unlock officer mode first.'); pinSheet(); },
+  'pin-save': async () => {
+    const a = $('#pin1').value.trim(), b = $('#pin2').value.trim();
+    if (!/^\d{4,12}$/.test(a)) return toast('Use 4 to 12 digits.');
+    if (a !== b) return toast('The two PINs do not match.');
+    const salt = rid(); const pinHash = await hashPin(a, salt);
+    S.unlocked = true; S.lastAct = Date.now();
+    await Store.set('config/security', { pinHash, salt, setAt: Date.now(), setBy: S.uid });
+    refreshRole(); closeSheet(); toast('Officer PIN saved. Officer mode stays unlocked until you lock it.');
+  },
+  'pin-remove': async () => {
+    const r = await ask({ title: 'Remove the officer PIN?', body: '<p>Everyone using this device will be able to approve sessions and make authorized corrections.</p>', confirm: 'Remove PIN', danger: true });
+    if (r) { await Store.del('config/security'); S.unlocked = false; toast('Officer PIN removed.'); }
+  },
+  backup: () => downloadBackup().catch(e => toast(e.message || 'The backup could not be created.')),
+  persist: async () => { const ok = navigator.storage && navigator.storage.persist ? await navigator.storage.persist() : false; toast(ok ? 'Data will be kept permanently on this device.' : 'The browser did not allow permanent storage. Installing the app usually enables it.'); bump(); },
+  install: async () => {
+    const e = S.installEvt; if (!e) return;
+    e.prompt(); try { await e.userChoice; } catch (x) { }
+    S.installEvt = null; bump();
+  },
+  'reload-app': async () => {
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (reg && reg.waiting) { navigator.serviceWorker.addEventListener('controllerchange', () => location.reload()); reg.waiting.postMessage('skip-waiting'); }
+    else location.reload();
+  },
+  erase: async () => {
+    const r = await ask({ title: 'Erase all data on this device?', body: '<p>This cannot be undone. Type ERASE to confirm.</p>', confirm: 'Erase everything', danger: true, input: { label: 'Type ERASE', required: true } });
+    if (r !== 'ERASE') { if (r) toast('Nothing was erased. Type ERASE exactly to confirm.'); return; }
+    try { await Local.replaceAll({}); uiSet('sid', null); uiSet('lastBackup', 0); location.reload(); } catch (e) { toast(e.message); }
+  }
+});
+document.addEventListener('change', async ev => {
+  const k = ev.target.dataset && ev.target.dataset.chg;
+  if (k !== 'merge-file' && k !== 'restore-file') return;
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  let j; try { j = await readBackup(f); } catch (e) { return toast(e.message); }
+  const n = Object.keys(j.data).filter(p => /\/buckets\//.test(p)).length;
+  if (k === 'restore-file') {
+    if (!S.isAdmin) return toast('Unlock officer mode first.');
+    const r = await ask({ title: 'Replace everything on this device?', body: `<p>The backup from ${esc(j.by || 'another device')}, exported ${fmtDT(j.exportedAt)}, will replace all records on this device. Download a backup of this device first if you may need its records.</p>`, confirm: 'Restore backup', danger: true });
+    if (!r) return;
+    try { await Local.replaceAll(j.data); uiSet('lastBackup', Date.now()); location.reload(); } catch (e) { toast(e.message || 'The backup could not be restored.'); }
+    return;
+  }
+  const r = await ask({ title: 'Merge records from this backup?', body: `<p>Backup from ${esc(j.by || 'another device')}, exported ${fmtDT(j.exportedAt)}. New and newer verification records, photographs and audit entries are added to this device. Nothing is deleted.</p>`, confirm: 'Merge records' });
+  if (!r) return;
+  try {
+    const st = await mergeBackup(j);
+    const parts = [`${nf(st.records)} new and ${nf(st.updated)} updated verification records`, `${nf(st.events)} audit entries`];
+    if (st.files) parts.push(`${nf(st.files)} files`);
+    if (st.sessions) parts.push(`${nf(st.sessions)} sessions`);
+    toast('Merged: ' + parts.join(', ') + '.', 6000);
+    if (st.skipped) toast(`${nf(st.skipped)} records were not merged because their session is already submitted or approved here.`, 7000);
+    if (st.regDiffers) toast('The other device has a different stock register. Its register was not merged.', 7000);
+  } catch (e) { toast(e.message || 'The merge could not be completed.'); }
+});
+
+/* ---------- install & service worker ---------- */
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.installEvt = e; bump(); });
+window.addEventListener('appinstalled', () => { S.installEvt = null; toast('App installed.'); bump(); });
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing; if (!nw) return;
+        nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) { S.updateReady = true; bump(); } });
+      });
+    }).catch(() => {});
+  });
+}
+boot();
+
+</script>
+</body>
+</html>
